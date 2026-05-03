@@ -1,0 +1,1197 @@
+\documentclass{article}
+
+% if you need to pass options to natbib, use, e.g.:
+%     \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2026
+
+% The authors should use one of these tracks.
+% Before accepting by the NeurIPS conference, select one of the options below.
+% 0. "default" for submission
+\usepackage{neurips_2026}
+% the "default" option is equal to the "main" option, which is used for the Main Track with double-blind reviewing.
+% 1. "main" option is used for the Main Track
+%  \usepackage[main]{neurips_2026}
+% 2. "position" option is used for the Position Paper Track
+%  \usepackage[position]{neurips_2026}
+% 3. "eandd" option is used for the Evaluations & Datasets Track
+ % \usepackage[eandd]{neurips_2026}
+ % if you need to opt-in for a single-blind submission in the E&D track:
+ %\usepackage[eandd, nonanonymous]{neurips_2026}
+% 4. "creativeai" option is used for the Creative AI Track
+%  \usepackage[creativeai]{neurips_2026}
+% 5. "sglblindworkshop" option is used for the Workshop with single-blind reviewing
+ % \usepackage[sglblindworkshop]{neurips_2026}
+% 6. "dblblindworkshop" option is used for the Workshop with double-blind reviewing
+%  \usepackage[dblblindworkshop]{neurips_2026}
+
+% After being accepted, the authors should add "final" behind the track to compile a camera-ready version.
+% 1. Main Track
+ % \usepackage[main, final]{neurips_2026}
+% 2. Position Paper Track
+%  \usepackage[position, final]{neurips_2026}
+% 3. Evaluations & Datasets Track
+ % \usepackage[eandd, final]{neurips_2026}
+% 4. Creative AI Track
+%  \usepackage[creativeai, final]{neurips_2026}
+% 5. Workshop with single-blind reviewing
+%  \usepackage[sglblindworkshop, final]{neurips_2026}
+% 6. Workshop with double-blind reviewing
+%  \usepackage[dblblindworkshop, final]{neurips_2026}
+% Note. For the workshop paper template, both \title{} and \workshoptitle{} are required, with the former indicating the paper title shown in the title and the latter indicating the workshop title displayed in the footnote.
+% For workshops (5., 6.), the authors should add the name of the workshop, "\workshoptitle" command is used to set the workshop title.
+% \workshoptitle{WORKSHOP TITLE}
+
+% "preprint" option is used for arXiv or other preprint submissions
+ % \usepackage[preprint]{neurips_2026}
+
+% to avoid loading the natbib package, add option nonatbib:
+%    \usepackage[nonatbib]{neurips_2026}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{xcolor}         % colors
+
+
+%% Stella added below
+\usepackage{graphicx}
+\bibliographystyle{plainnat}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsthm}
+% hyperref must load after natbib (natbib is loaded by neurips_2025)
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{definition}{Definition}
+
+
+% Note. For the workshop paper template, both \title{} and \workshoptitle{} are required, with the former indicating the paper title shown in the title and the latter indicating the workshop title displayed in the footnote. 
+\title{PIMSM: Physics-Informed Multi-Scale Mamba for Stable Neural Representations under Distribution Shift}
+
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to break the
+% lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
+% authors names on the first line, and the last on the second line, try using
+% \AND instead of \And before the third author name.
+
+
+\author{%
+  Sangyoon Bae \\
+  Interdisciplinary Program in Artificial Intelligence \\
+  Seoul National University \\
+  Seoul, South Korea, 08826 \\
+  \texttt{stellasybae@snu.ac.kr} \\
+  \And
+  Bogyeom Kim \\
+  Department of Psychology \\
+  Seoul National University \\
+  Seoul, South Korea, 08826 \\
+  \texttt{amyk01@snu.ac.kr} \\
+  \And
+  Shinjae Yoo \\
+  Computational Science Initiative \\
+  Brookhaven National Laboratory \\
+  Shirley, New York, United States, 11967 \\
+  \texttt{sjyoo@bnl.gov} \\
+  \And
+  Jiook Cha \\
+  Department of Psychology \\
+  Seoul National University \\
+  Seoul, South Korea, 08826 \\
+  \texttt{connectome@snu.ac.kr} \\
+}
+
+
+\begin{document}
+
+
+\maketitle
+
+
+\begin{abstract}
+Biological dynamical systems operate through interacting processes across multiple timescales, from fast local fluctuations to slow global state regulation. Neural activity is a prototypical example: its intrinsic temporal hierarchy must remain stable across changes in acquisition conditions and brain states. Yet current brain foundation models are still primarily evaluated by in-distribution performance, leaving open whether they can maintain stable representations under structured distribution shifts. We argue that neural time-series generalization is fundamentally limited by \emph{temporal kernel mismatch}: under acquisition and brain-state shifts, single-scale sequence models become structurally mismatched to the signal’s changing temporal statistics, inducing representation drift and degraded transfer. To address this, we propose \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}, a state-space architecture that derives scale-specific discretization parameters from spectrum-estimated knee frequencies and anchors them to acquisition time units, constructing a hierarchy of temporal kernels grounded in empirical neural scaling laws. Across multiple axes of structured distribution shift, including temporal covariate shift, low-resource transfer, brain-state shift, and cross-domain forecasting, PIMSM consistently improves robustness and representation stability over parameter-matched single-scale baselines without shift-specific adaptation. These results suggest that generalizable neural sequence modeling requires architectural alignment with the intrinsic multi-scale temporal organization of biological dynamics.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:introduction}
+
+Biological systems maintain adaptive function by coordinating processes across multiple timescales, from fast local fluctuations to slow homeostatic regulation. Neural activity is a prototypical example: its dynamics exhibit hierarchical temporal organization that must remain stable across changes in acquisition conditions and brain states. Yet most current brain foundation models (Brain FMs) are still evaluated primarily through in-distribution performance, leaving open whether their learned representations remain stable under structured distribution shifts~\citep{kanwal2025evaluating,yangeeg,tak2026brainiac,qin2025cora,han2026unica}.
+
+We argue that neural time-series generalization is fundamentally limited by \textbf{temporal kernel mismatch} under acquisition and brain-state shifts. When temporal statistics change, single-scale sequence models become structurally mismatched to the new regime, inducing representation drift and degraded transfer. We hypothesize that robust neural sequence modeling requires architectural alignment with the intrinsic multi-scale temporal structure of neural dynamics. In particular, a structured family of physics-aligned temporal kernels can reduce mismatch and stabilize latent geometry across shifts.
+
+A particularly important class of shifts are \emph{acquisition-preserving shifts}: changes in TR, sampling rate, preprocessing, or behavioral context that alter temporal statistics without changing downstream semantics. Prior work shows that TR-level temporal resolution directly affects decoding quality~\citep{wu2025volumewise}, and pretrained EEG models are similarly sensitive to such perturbations~\citep{yangeeg}. These observations raise a central question: \emph{what architectural property enables a brain sequence model to generalize across temporal, brain-state, and domain shifts without shift-specific adaptation?}
+
+\paragraph{Distribution shift taxonomy.}
+We organize shifts into four levels: \textbf{Level1}: temporal covariate shift (TR, sampling rate, temporal context); \textbf{Level2}: brain-state shift (resting, task, naturalistic); \textbf{Level3}: stimulus-genre shift (sitcom $\to$ documentary); and \textbf{Level4}: cross-domain shift, where PIMSM is applied \emph{without adaptation} to Weather-5K. We distinguish acquisition-preserving shifts (Levels1–3), which alter temporal statistics while preserving task semantics, from Level4, which tests domain-agnostic generalization.
+
+Neural activity does not evolve on a single characteristic timescale. Rather, brain signals reflect interacting processes that span multiple temporal regimes, from fast local fluctuations to slower network-level and homeostatic dynamics. A consistent finding across neural modalities is that these dynamics exhibit scale-free temporal structure over finite frequency ranges, suggesting that multi-scale organization is an intrinsic property of neural systems rather than a measurement artifact~\citep{bae2025spatiotemporal}. Empirically, neural power spectra are well approximated by a piecewise power-law form,
+\begin{equation}
+P(f) \propto f^{-\beta_k},
+\quad f \in [f_{k-1}, f_k],
+\quad k = 1, \dots, K,
+\end{equation}
+where knee frequencies $f_k$ separate distinct temporal regimes. This implies that neural dynamics cannot be faithfully characterized by a single effective time constant. Instead, neural signals exhibit multi-scale temporal dependence, with distinct frequency bands carrying complementary biological information. Prior work further shows that these spectral regimes are associated with sex and psychiatric phenotypes across large-scale cohorts, supporting that such structure reflects intrinsic neural organization rather than scanner artifacts~\citep{bae2025spatiotemporal}. A model that encodes only a single effective memory scale may therefore be structurally mismatched to the true temporal organization of neural signals, particularly under shifts that perturb temporal statistics.
+
+This mismatch is especially relevant for state-space models (SSMs), which have emerged as a powerful framework for long-sequence modeling. In selective SSMs such as Mamba, a discretization parameter $\Delta$ modulates the trade-off between memory retention and rapid updating~\citep{gu2023mamba}. Although often informally described as a time-step, $\Delta$ is not mathematically equivalent to the acquisition sampling interval. The effective dynamics depend jointly on $\Delta$ and the state transition matrix $A$, creating a scale trade-off in which changes to $\Delta$ can be offset by compensatory changes in $A$. As a result, standard single-scale SSMs lack a stable temporal reference: under acquisition shifts such as changes in TR or sampling rate, the optimal memory policy may change, inducing representation drift and degraded transfer. From a kernel perspective, this can be understood as temporal kernel mismatch: when the effective kernel required under a shifted condition differs from the kernel induced by the model, latent geometry may become unstable.
+
+These observations motivate a simple question: can the discretization parameter be reparameterized so that it reflects a physically meaningful time scale rather than an unconstrained gain? We address this by explicitly tying model timescales to both acquisition units and the intrinsic spectral structure of the signal. Instead of learning a single unconstrained discretization parameter, we infer a finite set of characteristic scales from spectrum-estimated knee frequencies and construct a hierarchy of acquisition-aligned temporal kernels. This enlarges the effective kernel family in a structured, biophysically grounded manner, reducing mismatch under acquisition-preserving shifts.
+
+Based on this principle, we introduce \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}, a structured multi-scale state-space architecture that embeds spectrum-derived temporal hierarchy directly into a Mamba-style backbone. PIMSM first uses a lightweight SpectralHyperNet to estimate knee frequencies and scaling exponents from the empirical power spectrum. These estimates define scale-specific center frequencies, which are mapped to discretization parameters ${\Delta_k}$ through a monotonic frequency-to-timescale transformation. A temporal hierarchy constraint preserves consistency across scales, while both $\Delta$ and $A$ are jointly anchored to acquisition time units, substantially mitigating $\Delta$–$A$ scale non-identifiability. Scale-specific latent states are then fused through lightweight cross-scale attention, enabling interactions across temporal regimes without architectural branching. Unlike prior multi-scale Mamba variants that impose scale structure through duplicated modules or hand-designed decomposition, PIMSM embeds temporal hierarchy directly within the state-space dynamics itself.
+
+We evaluate PIMSM across four axes of structured distribution shift spanning two domains: temporal covariate shift and low-resource generalization on HCP motor fMRI, stimulus-genre shift on naturalistic fMRI, and cross-domain transfer to Weather-5K without adaptation. We additionally evaluate brain-state generalization under resting-state to task fMRI transfer. Across settings, PIMSM consistently improves robustness and representation stability over parameter-matched single-scale baselines.
+
+Our main contributions are as follows:
+
+\begin{itemize}
+\item \textbf{Temporal kernel mismatch as a source of generalization failure.}
+We identify temporal kernel mismatch under acquisition and brain-state shifts as a mechanistic source of representation drift in neural sequence models, providing a principled explanation for why single-scale SSMs can fail under structured distribution shifts.
+\item \textbf{Physics-informed multi-scale temporal parameterization.}  
+We propose \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}, a structured multi-scale state-space architecture that derives scale-specific temporal kernels from spectrum-estimated knee frequencies and jointly anchors discretization and state dynamics to acquisition time units, mitigating $\Delta$--$A$ scale non-identifiability.
+\item \textbf{Multi-axis robustness evaluation across neural and physical systems.}  
+We evaluate PIMSM across temporal covariate shift, low-resource transfer, brain-state shift, stimulus-genre shift, and cross-domain forecasting, showing that physics-informed multi-scale temporal structure consistently improves robustness and representation stability over parameter-matched single-scale baselines without shift-specific adaptation.
+\end{itemize}
+
+
+\section{Problem Formulation}
+\label{sec:problem}
+
+\paragraph{Observed neural time series.}
+We observe a multivariate neural time series
+\begin{equation}
+x_{1:T} \in \mathbb{R}^{d},
+\end{equation}
+where $d$ denotes the number of channels/regions (e.g., EEG electrodes or fMRI parcels) and $T$ the sequence length.
+Our goal is to learn a temporal encoder that produces representations useful for downstream prediction while remaining stable under acquisition-preserving shifts.
+
+\paragraph{Domains and distribution shifts.}
+Let $e \in \mathcal{E}$ index an \emph{acquisition condition} (domain), such as fMRI TR, EEG sampling rate/montage, preprocessing pipeline, or paradigm/resting state.
+A shift $(e \rightarrow e')$ corresponds to a change in conditions that may alter the effective temporal statistics of the observed signal without changing the intended downstream semantics.
+We use \emph{out-of-distribution (OOD) evaluation} to mean test settings where the data-generating distribution differs from training along the axis specified: temporal input support, brain-state or paradigm, stimulus genre, or physical/domain regime.
+
+\paragraph{Shift taxonomy.}
+Consistent with the introduction, we distinguish four levels of distribution shift:
+\textbf{(L1) Temporal covariate shift}: TR, sampling rate, or temporal context changes; downstream semantics preserved.
+\textbf{(L2) Brain-state shift}: resting $\leftrightarrow$ task $\leftrightarrow$ naturalistic; same subject, generative regime changes.
+\textbf{(L3) Stimulus-genre shift}: sitcom $\to$ documentary; same acquisition, stimulus distribution changes.
+\textbf{(L4) Cross-domain shift}: PIMSM applied \emph{without adaptation} to meteorological time series (Weather-5K); entirely different physical system, testing domain-agnostic generalization.
+Our evaluation covers L1 (HCP TR truncation), L2 (rest$\to$task modality shift; Section~\ref{sec:results:brainstateshift}), L3 (sitcom$\to$documentary), and L4 (Weather-5K).
+
+\paragraph{Encoder and representation.}
+Let $\Phi_{\theta}$ denote a temporal encoder that maps $x_{1:T}$ to latent states $h_{1:T}$:
+\begin{equation}
+h_{1:T} = \Phi_{\theta}(x_{1:T}), \qquad h_t \in \mathbb{R}^{m}.
+\label{eq:encoder}
+\end{equation}
+Depending on the downstream task, we form an aggregated representation $z$ (e.g., mean pooling or a special token):
+\begin{equation}
+z = \rho(h_{1:T}) \in \mathbb{R}^{m}.
+\label{eq:aggregation}
+\end{equation}
+A prediction head $g_{\psi}$ produces task outputs $\hat{y}$:
+\begin{equation}
+\hat{y} = g_{\psi}(z).
+\label{eq:head}
+\end{equation}
+
+\paragraph{In-distribution training objective.}
+Given labeled data from a source domain $e$,
+$\mathcal{D}_{e}=\{(x^{(i)}_{1:T}, y^{(i)})\}_{i=1}^{n}$,
+we minimize an empirical risk
+\begin{equation}
+\min_{\theta,\psi}\;\; 
+\mathbb{E}_{(x,y)\sim \mathcal{D}_{e}}\left[\ell\big(g_{\psi}(\rho(\Phi_{\theta}(x))), y\big)\right],
+\label{eq:erm}
+\end{equation}
+where $\ell$ is a task loss (e.g., cross-entropy or MSE).
+
+\paragraph{Representation stability objective.}
+Beyond ID performance, we aim to ensure the learned representation geometry is stable under acquisition-preserving shifts.
+Let $z_e(x)$ and $z_{e'}(x)$ denote representations obtained by applying the same encoder architecture under two conditions.\footnote{In practice, this may correspond to the same learned parameters evaluated on shifted inputs, or to condition-induced changes in effective discretization/policies (e.g., $\Delta$ reconfiguration), depending on the model family.}
+We quantify representation drift using a geometry-aware discrepancy $\mathcal{D}(\cdot,\cdot)$ (e.g., $1-\mathrm{CKA}$ or distance correlation):
+\begin{equation}
+\mathrm{Drift}(e,e') 
+\;\;:=\;\;
+\mathbb{E}_{x\sim \mathcal{P}_{e,e'}}\left[\mathcal{D}\big(z_e(x), z_{e'}(x)\big)\right].
+\label{eq:drift_def}
+\end{equation}
+We seek models for which $\mathrm{Drift}(e,e')$ remains small for relevant shifts.
+
+\paragraph{Shift-robust learning criterion.}
+We evaluate a model along two axes:
+(i) predictive utility under both $e$ and $e'$ and 
+(ii) representation stability.
+Concretely, for each shift pair $(e,e')$, we report
+\begin{equation}
+\mathrm{Perf}(e) \;\; \text{and} \;\; \mathrm{Perf}(e'),
+\qquad\text{together with}\qquad
+\mathrm{Drift}(e,e').
+\label{eq:perf_and_drift}
+\end{equation}
+Our central thesis, developed in Section~\ref{sec:theory}, is that stability (low drift) is a necessary condition for reliable transfer under acquisition shift.
+
+\paragraph{Physics-informed multi-scale modeling assumption.}
+Motivated by prior evidence that neural signals exhibit multi-scale power-law spectra with a finite number of knee frequencies across modalities~\citep{bae2025spatiotemporal}, we posit that the temporal dependence structure of $x$ can be described by a finite set of scales.
+Formally, we assume the power spectral density admits a piecewise scaling form with $K$ regimes:
+\begin{equation}
+S_x(f) \approx c_k f^{-\beta_k},
+\qquad f \in [f_{k-1}, f_k],\quad k=1,\dots,K,
+\label{eq:piecewise_powerlaw}
+\end{equation}
+where $0 < f_1 < \cdots < f_{K-1}$ are knee frequencies and $\beta_k$ are scaling exponents.
+This motivates a multi-scale state-space encoder whose discretization parameters (e.g., $\Delta^{(k)}$) are tied to $(f_1,\dots,f_{K-1})$ and constrained to preserve a temporal hierarchy.
+The resulting model aims to reduce representation drift by enlarging the effective kernel family in a biophysically grounded way (Section~\ref{sec:theory:kernelbound}--\ref{sec:theory:multiscale}).
+
+\paragraph{Practical instantiation and evaluation.}
+In this work, we instantiate $\Phi_{\theta}$ as a physics-informed multi-scale SSM (PIMSM) and compare against parameter-matched temporal baselines (single-scale SSMs, Transformers, and CNNs).
+We evaluate generalizability across four axes of structured distribution shift: \textbf{(i)} temporal covariate shift (HCP motor fMRI TR truncation, L1), \textbf{(ii)} low-resource generalization (HCP motor 1--10\% labeled data), \textbf{(iii)} stimulus-genre shift (naturalistic fMRI, sitcom$\to$documentary, L3), and \textbf{(iv)} cross-domain shift (Weather-5K, 5 held-out variables, L4). For each axis we report downstream performance and representation stability (Drift), testing whether reduced drift correlates with improved shift robustness as suggested by the theory.
+
+
+
+\section{Theory}
+\label{sec:theory}
+
+\subsection{Why single-scale SSMs may fail to preserve representations under acquisition shift}
+\label{sec:theory:intuition}
+
+\paragraph{Background.}
+Let $x_{1:T}\in\mathbb{R}^{d}$ denote an observed neural time series and let $\Phi$ be an encoder that maps $x_{1:T}$ to latent states $h_{1:T}$.
+In neural modalities, \emph{acquisition-preserving shifts}---e.g., changes in sampling rate (EEG), TR (fMRI), preprocessing, or recording conditions---can alter the effective temporal statistics and the signal-to-noise profile of $x$ without changing the downstream task semantics.
+Empirically, such shifts often induce a reconfiguration of the internal dynamics of single-scale state-space models (SSMs), potentially leading to large changes in latent geometry (``representation drift'') even when in-distribution (ID) predictive performance is high.
+
+\paragraph{Core intuition.}
+A single-scale SSM implements a \emph{single} effective memory policy.
+To see the inherent trade-off, consider a simple nonstationary decomposition of the input
+\begin{equation}
+x(t) = x_s(t) + x_f(t),
+\label{eq:xf_xs}
+\end{equation}
+where $x_s$ is a slowly-varying component and $x_f$ captures fast fluctuations (including high-frequency neural activity and/or noise).
+A broad class of locally linear temporal encoders admits a kernel representation (Section~\ref{sec:theory:kernelbound}); for intuition, suppose the effective kernel is a single exponential with rate $\lambda>0$:
+\begin{equation}
+\hat h(t) \;=\; \int_{0}^{\infty} e^{-\lambda \tau}\, x(t-\tau)\, d\tau.
+\label{eq:single_exp_kernel}
+\end{equation}
+If $\lambda$ is large, the encoder emphasizes recent inputs and becomes sensitive to $x_f$, potentially amplifying fast fluctuations.
+If $\lambda$ is small, the encoder preserves long-range information but may underweight rapid task-relevant changes, effectively attenuating $x_f$ along with any high-frequency signal content.
+Under acquisition shifts (e.g., changed TR or sampling rate), the relative contribution and spectral profile of $(x_s, x_f)$ can change, so the \emph{best} single-scale policy (the optimal $\lambda$, or equivalently the SSM discretization step) may also change, leading to a reconfigured latent geometry.
+
+\paragraph{Multi-scale remedy.}
+In contrast, a multi-scale model maintains \emph{multiple} concurrent memory policies.
+In the simplest form, the representation can be expressed as a mixture of scale-specific states:
+\begin{equation}
+\hat h(t) \;=\; \sum_{k=1}^{K} \alpha_k\, \hat h_k(t),
+\qquad
+\sum_{k=1}^{K} \alpha_k = 1,\ \alpha_k\ge 0,
+\label{eq:multi_scale_mixture}
+\end{equation}
+where each $\hat h_k$ corresponds to a distinct time constant.
+This structure allows the model to simultaneously preserve slow components while remaining responsive to faster components, reducing sensitivity to acquisition-induced rebalancing between $x_s$ and $x_f$.
+In our setting, the scales are not engineered by ad-hoc filtering; instead, they are parameterized from the observed spectrum via knee frequencies and exponents (Section~\ref{sec:methods}), yielding a biophysically grounded multi-scale dynamics that aims to stabilize latent geometry under shift.
+
+\subsection{Stability condition for shifted representations}
+\label{sec:theory:stability}
+
+We formalize representation stability under acquisition-preserving shifts.
+
+\paragraph{Setup.}
+Let $e$ denote an acquisition condition/domain (e.g., TR in fMRI or sampling rate/montage in EEG), and let $e'$ denote a shifted condition.
+We write $\Phi_e$ for the encoder induced under condition $e$ (same architecture, potentially different effective dynamics due to discretization or learned policies), and $h_e(x)$ for its latent representation (we may consider either per-time-step states or an aggregated embedding).
+
+\paragraph{Definition (shift-stable representation).}
+Given a representation distance $\mathcal{D}(\cdot,\cdot)$ that captures geometry changes (e.g., $1-\mathrm{CKA}$ or a distance correlation based metric), we say $\Phi$ is \emph{$\varepsilon$-stable} under shift $(e\to e')$ if
+\begin{equation}
+\mathcal{D}\!\left(h_e(x),\, h_{e'}(x)\right) \le \varepsilon
+\quad \text{for (most) } x \sim \mathcal{P}_{e,e'}.
+\label{eq:stability_def}
+\end{equation}
+This definition isolates latent geometry from downstream readout and provides a target criterion for evaluating ``foundation-like'' behavior under condition changes.
+
+\subsection{Kernel mismatch bound: approximation error implies representation error}
+\label{sec:theory:kernelbound}
+
+We connect representation drift to mismatches in effective temporal kernels.
+
+\paragraph{Kernel view of locally linear temporal encoders.}
+Many SSM-based encoders (including discretized linear dynamics and their locally linear approximations) admit an effective convolutional form:
+\begin{equation}
+h(t) \;=\; \int_{0}^{\infty} g(\tau)\, x(t-\tau)\, d\tau,
+\qquad
+\tilde h(t) \;=\; \int_{0}^{\infty} \tilde g(\tau)\, x(t-\tau)\, d\tau,
+\label{eq:kernel_conv}
+\end{equation}
+where $g$ is the \emph{true} effective kernel under a given condition (or the kernel required to preserve task-relevant dynamics), and $\tilde g$ is the kernel induced/approximated by the model.
+We focus on bounds that highlight how kernel mismatch controls representation error.
+
+\begin{lemma}[Kernel mismatch bound]
+\label{lem:kernel_mismatch}
+Assume $\|x\|_{\infty}\le M$.
+Let $h$ and $\tilde h$ be defined as in Eq.~\eqref{eq:kernel_conv}.
+Then,
+\begin{equation}
+\|h - \tilde h\|_{\infty} \;\le\; M\, \|g - \tilde g\|_{1}.
+\label{eq:kernel_mismatch_bound}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+For any $t$,
+\[
+|h(t)-\tilde h(t)|
+=
+\left|\int_{0}^{\infty} (g(\tau)-\tilde g(\tau))\, x(t-\tau)\, d\tau\right|
+\le
+\int_{0}^{\infty} |g(\tau)-\tilde g(\tau)|\, |x(t-\tau)|\, d\tau
+\le
+M \int_{0}^{\infty} |g(\tau)-\tilde g(\tau)|\, d\tau,
+\]
+which gives Eq.~\eqref{eq:kernel_mismatch_bound}. Taking the supremum over $t$ completes the proof.
+\end{proof}
+
+\paragraph{Interpretation under shift.}
+Under an acquisition shift $(e\to e')$, the \emph{effective} kernel may change from $g_e$ to $g_{e'}$ (e.g., due to changed sampling/TR, preprocessing, or noise structure).
+Lemma~\ref{lem:kernel_mismatch} implies that if the model's kernel family cannot approximate $g_{e'}$ well, i.e., $\|g_{e'}-\tilde g\|_1$ remains large, then representation error is necessarily large.
+Conversely, enlarging the kernel family in a structured manner can reduce kernel mismatch and thereby constrain representation drift.
+
+\subsection{Representation drift implies prediction instability}
+\label{sec:theory:predinstability}
+
+We connect drift to degradation in downstream prediction in a simple but informative setting.
+
+\paragraph{Linear readout sensitivity.}
+Consider a downstream readout $\hat y = w^\top h$ (or a locally linear approximation of a nonlinear head).
+Let $h'$ denote the representation under shift, and $\Delta h := h' - h$.
+
+\begin{proposition}[Readout sensitivity to representation drift]
+\label{prop:readout_sensitivity}
+For any $w$ and representations $(h,h')$,
+\begin{equation}
+|\hat y' - \hat y|
+=
+|w^\top h' - w^\top h|
+\le
+\|w\|_2\, \|\Delta h\|_2.
+\label{eq:readout_sensitivity}
+\end{equation}
+\end{proposition}
+
+\paragraph{Implication.}
+Proposition~\ref{prop:readout_sensitivity} shows that downstream predictions can be unstable whenever $\|\Delta h\|$ is large, regardless of how well $w$ fits in-distribution.
+Together with Lemma~\ref{lem:kernel_mismatch}, this yields a simple chain:
+\begin{equation}
+\|\Delta h\|
+\ \lesssim\
+M\, \|g_{e'} - \tilde g\|_{1},
+\label{eq:chain_kernel_to_pred}
+\end{equation}
+highlighting kernel mismatch as a mechanistic source of drift and prediction sensitivity under shift.
+
+\subsection{Why multi-scale kernels are structurally better matched to neural scaling}
+\label{sec:theory:multiscale}
+
+We now relate the above bounds to the structural assumptions in Section~\ref{sec:methods}.
+Neural signals are frequently characterized by multi-scale power-law spectra with a finite number of knee frequencies, implying distinct regimes of temporal dependence.
+A single-scale SSM corresponds to a narrow kernel family (e.g., a single exponential or a single ``corner'' in frequency space), which may not uniformly approximate kernels consistent with piecewise scaling across acquisition conditions.
+In contrast, a mixture of exponentials provides a richer, yet still structured, family:
+\begin{equation}
+g_K(t) \;=\; \sum_{k=1}^{K} \alpha_k\, e^{-t/\tau_k},
+\qquad \alpha_k\ge 0,\ \sum_k \alpha_k=1,\ \tau_1 \ge \tau_2 \ge \cdots \ge \tau_K.
+\label{eq:mixture_exp_kernel}
+\end{equation}
+This family can approximate a broader class of long-memory behaviors (including multi-scale power-law-like decay over finite ranges), thereby reducing the achievable kernel mismatch $\inf_{\tilde g \in \mathcal{G}_K}\|g_{e'}-\tilde g\|_1$ under varying conditions.
+
+\paragraph{Physics-informed parameterization and hierarchy preservation.}
+Our method ties the scale parameters $\{\tau_k\}$ (equivalently discretization parameters $\{\Delta^{(k)}\}$) to spectrum-derived knees and exponents, and enforces temporal hierarchy (e.g., $\Delta^{(1)} \ge \Delta^{(2)} \ge \Delta^{(3)}$).
+Crucially, the target is not the stability of the raw parameters per se, but the stability of the induced latent geometry under shift.
+The physics-informed multi-scale parameterization is designed to (i) constrain the model to a structured kernel family aligned with neural scaling, and (ii) reduce reconfiguration of the effective memory policy when acquisition conditions change.
+
+\paragraph{Extension to brain-state shifts.}
+While the kernel mismatch bound (Eq.~\eqref{eq:kernel_mismatch_bound}) is stated for acquisition-preserving shifts, the same mechanism applies to brain-state shifts (L2): a transition from resting to task state alters the spectral composition of BOLD signals, changing the optimal effective kernel. A single-scale model trained on resting-state dynamics may exhibit large $\|g_{e'} - \tilde{g}\|_1$ when deployed on task-fMRI, inducing drift and degraded downstream decoding. A physics-informed multi-scale kernel family, by covering a broader spectral range, is structurally better positioned to remain stable across such generative regime changes.
+
+\paragraph{Empirical correspondence.}
+In Section~\ref{sec:results}, we evaluate (i) in-distribution performance, (ii) performance under four axes of structured distribution shift, and (iii) representation drift metrics (CKA/dCor) to test whether reduced drift correlates with improved shift robustness, consistent with Eq.~\eqref{eq:chain_kernel_to_pred}.
+We additionally perform ablations that remove the physics-informed multi-scale parameterization (random or freely learned $\Delta$) to disentangle multi-scale capacity from biophysical grounding.
+
+\section{Methods}
+\label{sec:methods}
+
+\subsection{Overall Architecture}
+\label{sec:methods:overview}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/PIMSM_Fig1.pdf}
+\caption{
+\textbf{Physics-informed multi-scale parameterization of temporal dynamics.}
+\textbf{(a)} Overall architecture of PIMSM. 
+A neural time series is first analyzed by a SpectralHyperNet to estimate spectral knees and scaling exponents, which parameterize a multi-scale state-space model (SSM). 
+Scale-specific latent states are fused via cross-scale attention.
+\textbf{(b1)} Empirical multi-scale power-law structure of neural signals.
+The power spectral density exhibits piecewise scaling separated by knee frequencies $(f_1, f_2)$, motivating a finite set of characteristic frequency regimes.
+\textbf{(b2)} Spectrum-to-dynamics mapping.
+For each regime, a characteristic center frequency $f_{c,k}$ is computed and mapped to a discretization parameter via a monotonic transformation, linking spectral structure to temporal update dynamics.
+\textbf{(b3)} Hierarchical discretization parameters ($\Delta_1 \ge \Delta_2 \ge \Delta_3$).
+Higher-frequency regimes induce larger update steps (fast dynamics), while lower-frequency regimes preserve longer memory.
+By explicitly tying discretization to spectrum-derived scales, the model preserves temporal hierarchy and enlarges the effective kernel family, aiming to stabilize latent geometry under acquisition-preserving shifts.
+}
+\label{fig:architecture_multiscale}
+\end{figure}
+
+PIMSM (Physics-Informed Multi-Scale Mamba) is designed to explicitly integrate the multi-scale temporal structure of neural signals into a state-space framework. As illustrated in Fig.~1, the model consists of three stages: (1) spectral analysis and scale inference via a SpectralHyperNet, (2) scale-conditioned multi-scale SSM processing, and (3) cross-scale fusion through lightweight attention. Given an input time series $\mathbf{x}_{1:T} \in \mathbb{R}^d$, the model produces latent representations that are subsequently pooled and passed to a task-specific prediction head. The central design principle is to tie SSM discretization parameters to spectrum-derived time scales, thereby preserving temporal hierarchy under acquisition shifts.
+
+\subsection{Data and Input Representation}
+
+\paragraph{HCP-1200 motor task fMRI (temporal shift and low-resource axes).}
+We use the HCP-1200 motor task fMRI dataset~\citep{barch2013function,van2013wu} as the primary neural benchmark.
+Time series were extracted from 360 cortical regions (HCPMMP1 atlas~\citep{glasser2016multi}), yielding inputs $\mathbf{x}_{1:T}\in\mathbb{R}^{T\times360}$.
+Event-related segments for five motor conditions (LH, RH, LF, RF, T) were extracted with a maximum block length of 17 TRs (TR$=0.72$\,s); each ROI time series was z-score normalized per run.
+\textbf{Temporal acquisition shift:} we truncate each trial to the first 3 or 2 TRs (severe temporal truncation), preserving labels and subjects, to simulate acquisition-preserving shifts in effective temporal context.
+\textbf{Low-resource generalization:} we vary the fraction of labeled training data in $\{1\%, 5\%, 10\%, 100\%\}$ while keeping validation and test sets unchanged.
+Models pretrained on resting-state fMRI are finetuned under each data fraction; linear probing results are additionally reported.
+
+\paragraph{HCP resting-state fMRI — brain-state shift (Level 2).}
+To evaluate Level~2 brain-state generalization, we train all models from scratch on HCP resting-state fMRI (truncated to 284 TRs to match the task sequence length) for sex (Gender) classification, then evaluate on HCP motor-task fMRI (284 TRs, same subjects, disjoint test split) without any adaptation.
+This modality-shift protocol directly tests whether representations learned under spontaneous brain dynamics transfer to task-evoked neural activity, using an identical sequence length to isolate the generative regime change from any temporal context difference.
+Models are trained and evaluated using three random seeds; we report mean and standard deviation of test accuracy.
+
+\paragraph{Naturalistic fMRI — stimulus-genre shift (SitCom$\to$documentary).}
+We evaluate stimulus-genre generalizability using a naturalistic fMRI dataset in which subjects watched sitcom episodes during scanning (training/validation split) and were subsequently scanned during documentary clips (test split).
+This stimulus-genre distribution shift preserves subject identity, acquisition hardware, and preprocessing pipeline while changing only the stimulus genre distribution, providing a clean test of whether learned representations depend on dataset-specific low-level statistics or encode genre-invariant neural dynamics.
+fMRI time series were extracted from the same 360-region HCPMMP1 atlas and z-score normalized per run.
+
+\paragraph{Weather-5K (cross-domain shift, Level 4).}
+We evaluate cross-domain generalizability on Weather-5K~\citep{han2026unica}, a large-scale meteorological time-series benchmark spanning 5,000 global weather stations.
+PIMSM is applied \emph{directly} to meteorological data without any domain-specific adaptation or retraining on neural signals---the model architecture and physics-informed inductive biases are identical to those used for fMRI/EEG.
+We hold out five meteorological variables (temperature, precipitation, wind speed, humidity, pressure) from the test set while training on the remaining variables, simulating a realistic deployment scenario in which novel physical regimes are encountered at inference time.
+This benchmark tests whether PIMSM's physics-informed multi-scale temporal structure---grounded in spectral power-law organization---generalizes beyond neural signals to physical systems exhibiting analogous but independently-arising spectral dynamics.
+
+\subsection{SpectralHyperNet: Spectrum-Guided Scale Inference}
+
+Following~\citet{bae2025spatiotemporal}, we model the BOLD power spectral density as a piecewise power-law across $K=3$ frequency regimes (ultra-low, low, high), separated by knee frequencies $(f_1, f_2)$.
+We empirically verify this piecewise structure across datasets and modalities in Appendix~\ref{sec:appx:psd_multifractal}.
+
+\textbf{Spectral modeling.} Neural signals are known to exhibit piecewise power-law spectra. Given the full task run, we estimate the power spectral density $P(f)$ via FFT. We assume a multi-scale power-law structure:
+\begin{equation}
+P(f) \propto f^{-\beta_k}, \quad f \in [f_{k-1}, f_k], \quad k = 1, 2, 3,
+\end{equation}
+where $(f_1, f_2)$ are knee frequencies separating three frequency regimes.
+
+\textbf{Knee estimation.} A lightweight neural network (SpectralHyperNet) predicts $(f_1, f_2)$ and scaling exponents $(\beta_1, \beta_2, \beta_3)$ directly from the full-run power spectrum via FFT.
+Using the full run stabilizes spectral estimation relative to short blocks.
+Knee positions are estimated in a fully data-driven manner without boundary or gap penalties; only the piecewise spectral fit loss drives the placement of $(f_1, f_2)$.
+To improve optimization, the network is initialized using a scipy-based fit on the first training batch, providing a data-dependent starting point that avoids poor local minima in the non-convex spectral loss landscape.
+A learnable per-sample bias term is added to the network's $(f_1, f_2)$ predictions, enabling sample-specific adaptation beyond the global NN prior.
+Piecewise continuity across regime boundaries is encouraged by a seam loss ($\lambda_{\mathrm{seam}} = 0.1$) that penalizes discontinuities in the predicted log-PSD at $f_1$ and $f_2$.
+Exponents are constrained to $[\beta_{\min}, \beta_{\max}] = [0.3, 5.0]$ and additionally regularized via an extreme-value penalty ($\lambda_{\mathrm{ext}} = 0.5$) to prevent saturation at the boundaries.
+The spectral fit loss is an MAE between the log-PSD and the piecewise power-law prediction, computed simultaneously at multiple frequency resolutions (coarse-to-fine) to escape local minima.
+To ensure balanced estimation across brain regions, the fit loss is averaged with equal weight across all ROIs; a separate spectral alignment loss ($\lambda_{\mathrm{spec}} = 0.3$) further regularizes the predicted spectrum.
+
+\textbf{Energy-weighted center frequency and discretization mapping.} For each frequency band $k$, we compute an energy-weighted center frequency $f_{c,k}$ under the assumption $P(f) \propto f^{-\beta}$. This yields a representative frequency per band that reflects the actual spectral mass distribution, rather than a simple geometric mean.
+
+\paragraph{Frequency-to-delta mapping.}
+The core principle is $\Delta_k \propto f_{c,k}$: higher-frequency bands receive larger $\Delta$ (faster state updates), consistent with the timescale--frequency trade-off in SSMs; lower-frequency bands receive smaller $\Delta$ (longer memory). We implement this via a per-band normalized mapping to avoid saturation under global normalization. For each band $k$ with boundaries $[f_{a,k}, f_{b,k}]$, define (i) $t_k = (\log f_{c,k} - \log f_{a,k}) / (\log f_{b,k} - \log f_{a,k})$, the within-band normalized position of $f_{c,k}$; and (ii) $p_k$, the position of the band center in the full spectrum $[f_{\min}, f_{\max}]$. The final mixing term is
+\begin{equation}
+m_k = p_k (1 - w) + w\, t_k, \quad w = 0.3,
+\end{equation}
+yielding $\Delta_k = \Delta_{\min} + (\Delta_{\max} - \Delta_{\min}) \cdot m_k$. The weight $w$ balances global band ordering ($p_k$) with sample-specific within-band variation ($t_k$); $p_k$ dominates to ensure high-frequency bands consistently receive larger $\Delta$. This mapping is a design choice motivated by spectral structure; we ablate $w$ and normalization mode (global vs.\ per-band) to verify robustness (Appendix~\ref{sec:appx:delta_ablation}). A hierarchical constraint $\Delta_1 \geq \Delta_2 \geq \Delta_3$ enforces temporal ordering across scales.
+
+\textbf{Acquisition-unit anchoring.} To resolve $\Delta$--$A$ scale non-identifiability, PIMSM jointly constrains both parameters from their respective sides.
+
+On the $\Delta$ side, each scale-specific discretization parameter is expressed as $\Delta_k = \tilde{\Delta}_k \cdot (\mathrm{TR}/\Delta_{\max})$, which scales it into TR units, and an L2 regularization is applied on $\theta_k = \log(\Delta_k/\mathrm{TR})$ to further encourage alignment with the acquisition repetition time.
+
+On the $A$ side, the state transition matrix is initialized as $A = -1/\tau$ with $\tau \sim \mathrm{LogUniform}(1{\times}\mathrm{TR},\;100{\times}\mathrm{TR})$, placing initial time constants within the physiologically observed range of BOLD dynamics. An $A$-scale regularization $\mathcal{L}_A = \lambda_A \sum_j (\log|\bar{A}_j| - \log a_0)^2$ then prevents $A$ from drifting away from this initialization to compensate for changes in $\Delta$.
+
+Together, these two mechanisms pin $\tau_\text{eff} \approx \Delta/(-A)$ from both sides simultaneously. This is stronger than anchoring $\Delta$ alone: without $A$ regularization, $A$ can freely shrink or expand to cancel any $\Delta$ constraint, leaving the effective time constant undetermined. By constraining both, PIMSM substantially reduces the degrees of freedom in the $\Delta$--$A$ joint manifold and grounds temporal dynamics in physically meaningful acquisition units.
+The same $\Delta$--$A$ separation recipe is used in every PIMSM run; only the nominal acquisition step written as $\mathrm{TR}$ in the implementation is swapped for the dataset-native spacing (fMRI TR, EEG frame duration, or---for aggregated geophysical panels---the nominal step in seconds so that $\Delta$ and $\tau$ share consistent units).
+
+\subsection{Multi-Scale State-Space Block}
+
+Each PIMSM block extends the Mamba-2 SSD kernel to a multi-scale setting. We employ $H = 6$ SSM heads grouped into $K = 3$ scale groups (two heads per scale); heads within the same scale share $\Delta_k$ but maintain independent state transition matrices. Scale-specific states are averaged within each group, then fused across scales via a lightweight cross-scale attention module. Full architectural equations are given in Appendix~\ref{sec:appx:arch_details}.
+
+\subsection{Backbone and Prediction Head}
+
+The backbone consists of nine stacked PIMSM blocks with intermediate gated MLP layers. The model dimension is $d_{\mathrm{model}} = 320$ with an intermediate MLP dimension of $d_{\mathrm{inter}} = 1024$. Temporal mean pooling is applied to the final hidden sequence, followed by a task-specific linear classifier (binary for HCP Gender, 5-class for motor decoding, binary for naturalistic fMRI, regression/forecasting for Weather-5K).
+
+\subsection{Training Details}
+\label{sec:methods:training}
+
+All PIMSM models are trained from scratch using AdamW with learning rate $10^{-3}$, weight decay $0.1$, and a cosine annealing schedule with linear warmup.
+Gradient norms are clipped at $1.0$.
+For the brain-state shift experiment (Axis v), we use batch size $16$ and train for $35$ epochs.
+For motor decoding (Axes i--ii), we use batch size $32$.
+Label smoothing ($\epsilon = 0.1$) is applied to all classification losses.
+Regularization weights: $\lambda_\Delta = 0.1$ (TR-anchored $\Delta$ penalty), $\lambda_A = 0.1$ ($A$-scale regularization).
+All runs use three random seeds; we report mean $\pm$ standard deviation of test accuracy.
+Parameter counts are matched across all baselines ($\approx$7.85M parameters): Mamba2 ($d_{\mathrm{model}}=352$, 9 layers), Transformer ($d_{\mathrm{model}}=280$, 8 layers), 1D-CNN (channels 220/440/660/880).
+
+\subsection{Self-Supervised Pretraining on Resting-State fMRI}
+\label{sec:methods:pretraining}
+
+PIMSM supports pretraining on resting-state fMRI using a spatiotemporal masked reconstruction objective, with SpectralHyperNet operating on the unmasked signal to provide stable spectral estimates under partial input corruption. This is left for future work; the experiments reported here use from-scratch training.
+
+\section{Results}\label{sec:results}
+
+We evaluate PIMSM across four axes of structured distribution shift. Axes (i--ii) use HCP motor fMRI; axes (iii--iv) use naturalistic fMRI and Weather-5K respectively. All comparisons use parameter-matched baselines (Mamba2, Transformer, 1D-CNN; $\approx$7.85M parameters each). Results are averaged over three seeds.
+
+\subsection{Axis (i): Temporal Covariate Shift — HCP Motor TR Truncation (Level 1)}
+\label{sec:results:hcp_tr_shift}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/PIMSM_Fig2.pdf}
+\caption{
+\textbf{Representation stability under TR shift (HCP motor task fMRI).}
+\textbf{(a)} Relationship between representation similarity (CKA; Full TRs vs reduced TRs) and performance drop (Full TR $\rightarrow$ 2TR / 3TR).
+\textbf{(b)} PCA visualization of latent embeddings under Full TR, 3TR, and 2TR.
+\textbf{(c)} Mean $\ell_2$ latent drift between Full TR and reduced TR conditions.
+}
+\label{fig:tr_shift_stability}
+\end{figure}
+
+We assess robustness to temporal covariate shift by truncating each motor trial to the first 3 or 2 TRs, simulating reduced temporal context while preserving task labels and subject identity.
+Figure~\ref{fig:tr_shift_stability} reports representation stability (CKA, distance correlation dCor between Full-TR and truncated representations) alongside decoding accuracy.
+
+\paragraph{Full TR $\rightarrow$ 2 TRs (severe truncation).}
+Table~\ref{tab:drift2tr} shows that PIMSM maintains the highest accuracy ($0.933\pm0.016$) and representation stability (CKA $0.812$, dCor $0.846$) under severe truncation, compared with Mamba2 (accuracy $0.914$, CKA $0.733$), Transformer ($0.884$, CKA $0.783$), and 1D-CNN ($0.847$, CKA $0.559$). PIMSM ablations (learnable or random $\Delta$) do not recover the same stability, confirming that physics-informed scale parameters---not multi-scale capacity alone---drive robustness.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+Model & Full TRs & 2 TRs & CKA (Full$\leftrightarrow$2TR) & dCor (Full$\leftrightarrow$2TR) \\
+\midrule
+Mamba2 & $0.983\pm0.002$ & $0.914\pm0.005$ & $0.733\pm0.018$ & $0.770\pm0.011$ \\
+1DCNN & $0.978\pm0.007$ & $0.847\pm0.009$ & $0.559\pm0.020$ & $0.622\pm0.012$ \\
+Transformer & $0.982\pm0.006$ & $0.884\pm0.007$ & $0.783\pm0.015$ & $0.805\pm0.005$ \\
+PIMSM (learnable $\Delta$) & $0.982\pm0.001$ & $0.913\pm0.030$ & $0.776\pm0.086$ & $0.804\pm0.078$ \\
+PIMSM (random $\Delta$) & $0.983\pm0.004$ & $0.889\pm0.055$ & $0.737\pm0.105$ & $0.774\pm0.108$ \\
+\midrule
+\textbf{PIMSM} & $\mathbf{0.987\pm0.007}$ & $\mathbf{0.933\pm0.016}$ & $\mathbf{0.812\pm0.033}$ & $\mathbf{0.846\pm0.022}$ \\
+\bottomrule
+\end{tabular}
+\caption{
+\textbf{HCP motor decoding under severe temporal truncation (Full TR $\rightarrow$ 2 TRs).}
+PIMSM achieves the highest accuracy and representation stability. Ablations (learnable/random $\Delta$) confirm that physics-informed scale parameters are necessary.
+}
+\label{tab:drift2tr}
+\end{table}
+
+\paragraph{Full TR $\rightarrow$ 3 TRs (moderate truncation).}
+Table~\ref{tab:drift3tr} shows consistent results under moderate truncation. PIMSM ($0.944\pm0.005$, CKA $0.854$) outperforms Mamba2 ($0.931$, CKA $0.786$) and Transformer ($0.927$, CKA $0.839$).
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+Model & Full TRs & 3 TRs & CKA (Full$\leftrightarrow$3TR) & dCor (Full$\leftrightarrow$3TR) \\
+\midrule
+Mamba2 & $0.983\pm0.002$ & $0.931\pm0.010$ & $0.786\pm0.031$ & $0.817\pm0.025$ \\
+1DCNN & $0.978\pm0.007$ & $0.874\pm0.001$ & $0.585\pm0.008$ & $0.658\pm0.001$ \\
+Transformer & $0.982\pm0.006$ & $0.927\pm0.007$ & $0.839\pm0.019$ & $0.864\pm0.016$ \\
+PIMSM (learnable $\Delta$) & $0.982\pm0.001$ & $0.937\pm0.004$ & $0.865\pm0.006$ & $0.881\pm0.005$ \\
+PIMSM (random $\Delta$) & $0.983\pm0.004$ & $0.934\pm0.003$ & $0.846\pm0.026$ & $0.873\pm0.019$ \\
+\midrule
+\textbf{PIMSM} & $\mathbf{0.987\pm0.007}$ & $\mathbf{0.944\pm0.005}$ & $\mathbf{0.854\pm0.022}$ & $\mathbf{0.878\pm0.020}$ \\
+\bottomrule
+\end{tabular}
+\caption{
+\textbf{HCP motor decoding under moderate temporal truncation (Full TR $\rightarrow$ 3 TRs).}
+}
+\label{tab:drift3tr}
+\end{table}
+
+\paragraph{Drift intervention and scaling.}
+Introducing explicit drift regularization for Mamba2 ($\mathcal{L}=\mathcal{L}_\text{task}+\lambda D(z^{\text{Full}},z^{\text{Shift}})$) improves its stability under truncation without degrading ID performance, establishing drift as a causal lever for robustness. PIMSM achieves comparable stability through architecture alone. Larger PIMSM models exhibit increasingly stable representations under temporal shift, whereas single-scale SSMs fail to convert additional capacity into robustness (Figure~\ref{fig:scaling}; detailed tables in Appendix~\ref{sec:appx:hcp_tr_shift}).
+
+\subsection{Axis (ii): Low-Resource Generalization — HCP Motor Data Scarcity}
+\label{sec:results:data_scarce}
+
+Table~\ref{tab:data_scarce} reports motor decoding accuracy as labeled training data varies from 1\% to 100\%.
+At 1\% data, PIMSM achieves $0.797\pm0.040$, outperforming Mamba2 ($0.752$), Transformer ($0.774$), and 1D-CNN ($0.709$).
+Differences diminish beyond 10\%, indicating that physics-informed multi-scale dynamics primarily improve sample efficiency in the extreme low-supervision regime.
+Pretraining on resting-state fMRI further improves robustness; linear probing results are reported in Appendix~\ref{sec:appx:pretrain}.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+Model & 1\% & 5\% & 10\% & 100\% \\
+\midrule
+PIMSM & $\mathbf{0.797\pm0.040}$ & $0.940\pm0.017$ & $0.963\pm0.011$ & $\mathbf{0.987\pm0.007}$ \\
+Mamba2 & $0.752\pm0.015$ & $0.934\pm0.022$ & $0.963\pm0.006$ & $0.983\pm0.002$ \\
+1DCNN & $0.709\pm0.026$ & $0.927\pm0.018$ & $0.956\pm0.007$ & $0.978\pm0.007$ \\
+Transformer & $0.774\pm0.031$ & $\mathbf{0.948\pm0.017}$ & $\mathbf{0.967\pm0.006}$ & $0.982\pm0.006$ \\
+\bottomrule
+\end{tabular}
+\caption{
+\textbf{Low-resource generalization on HCP motor decoding.}
+Models pretrained on resting-state fMRI and finetuned with varying fractions of labeled data.
+PIMSM achieves the strongest performance in the extreme low-data regime (1\%).
+}
+\label{tab:data_scarce}
+\end{table}
+
+\subsection{Axis (iii): Stimulus-Genre Shift — Naturalistic fMRI (SitCom→Documentary, Level 3)}
+\label{sec:results:sitcom}
+
+We evaluate generalizability under stimulus-genre shift (L3) by training on naturalistic fMRI recorded during sitcom episodes and testing on documentary clips from the same subjects.
+This cross-stimulus distribution shift isolates genre distribution as the sole shifting variable, with acquisition hardware, preprocessing, and subject identity held constant---providing a clean test of whether learned representations encode genre-invariant neural dynamics or depend on dataset-specific low-level statistics.
+Table~\ref{tab:sitcom} reports decoding accuracy and representation stability (CKA, dCor between sitcom and documentary embeddings) for PIMSM and parameter-matched baselines.
+
+% TODO: fill in results once experiments are complete
+\textbf{[to be filled]}
+
+\subsection{Axis (iv): Cross-Domain Shift — Weather-5K (Level 4)}
+\label{sec:results:weather}
+
+We evaluate cross-domain generalizability on Weather-5K~\citep{han2026unica} with five held-out meteorological variables as OOD targets (L4).
+PIMSM is applied without any domain-specific adaptation; the same architecture and inductive biases used for neural signals are carried over directly.
+This tests whether PIMSM's physics-informed multi-scale temporal structure---motivated by neural power-law spectra---generalizes to physical systems with independently-arising but analogous spectral organization, and whether it achieves strong OOD performance on held-out meteorological variables.
+Table~\ref{tab:weather} reports forecasting error (MSE/MAE) on held-out variables for PIMSM and parameter-matched baselines.
+
+% TODO: fill in results once experiments are complete
+\textbf{[to be filled]}
+
+\subsection{Axis (v): Brain-State Shift — Resting-State Training → Task Generalization (Level 2)}
+\label{sec:results:brainstateshift}
+
+We evaluate Level~2 brain-state generalization under the from-scratch modality-shift protocol described in Section~\ref{sec:methods}: models are trained on HCP resting-state fMRI and evaluated on motor-task fMRI without any domain adaptation (see Methods for details).
+This setting tests whether physics-informed temporal kernels---derived from the resting-state spectral structure---remain informative when the generative regime shifts from spontaneous to task-evoked neural activity.
+
+Table~\ref{tab:brainstateshift} reports sex classification accuracy on the task-fMRI test split for PIMSM and parameter-matched baselines (three seeds each).
+PIMSM achieves the highest mean accuracy ($0.632\pm0.013$) while exhibiting markedly lower cross-seed variance than all baselines.
+Mamba2 ($0.591\pm0.038$), 1D-CNN ($0.589\pm0.040$), and Transformer ($0.554\pm0.063$) show variance $3$--$5\times$ larger than PIMSM, indicating that their representations reconfigure differently across random initializations when transferred across generative regimes.
+This consistency advantage---rather than raw accuracy alone---is the key empirical signature predicted by our kernel mismatch theory: a physics-informed multi-scale kernel family covers a broader spectral range, structurally reducing sensitivity to the resting$\leftrightarrow$task regime change (Section~\ref{sec:theory:multiscale}).
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lcc}
+\toprule
+Model & Mean accuracy & Std (3 seeds) \\
+\midrule
+Mamba2      & $0.591$ & $0.038$ \\
+1D-CNN      & $0.589$ & $0.040$ \\
+Transformer & $0.554$ & $0.063$ \\
+\midrule
+\textbf{PIMSM} & $\mathbf{0.632}$ & $\mathbf{0.013}$ \\
+\bottomrule
+\end{tabular}
+\caption{
+\textbf{Brain-state shift: resting-state training $\to$ motor-task test (Level~2).}
+Models are trained on HCP resting-state fMRI and evaluated on motor-task fMRI without adaptation.
+PIMSM achieves the highest accuracy and $3$--$5\times$ lower cross-seed variance than single-scale baselines, consistent with the theoretical prediction that physics-informed multi-scale kernels reduce representational reconfiguration under generative regime shifts.
+}
+\label{tab:brainstateshift}
+\end{table}
+
+
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Generalizable Foundation Models for Time Series and Neural Signals.}
+Evaluating generalizability---rather than in-distribution accuracy alone---has become a central theme in foundation model research.
+For brain MRI, BrainIAC~\citep{tak2026brainiac} demonstrates that a self-supervised ViT pretrained on 48,965 scans generalizes across 7 downstream tasks, 10 neurological conditions, and varying acquisition artifacts, with the largest advantage in low-data ($\le$40\%) and few-shot regimes.
+For time-series FMs, CoRA~\citep{qin2025cora} and UniCA~\citep{han2026unica} study generalizability under covariate shift, showing that models pretrained on univariate series can be adapted to multi-modal covariates (time series, text, images) while preserving the pretrained backbone.
+Critically, both works validate across multiple backbone architectures (4+ models each), establishing backbone-independent generalizability as a key evaluation criterion.
+In task fMRI, volume-wise decoding work~\citep{wu2025volumewise} demonstrates that temporal resolution at the TR level is a critical design axis: TR-unit decoding recovers state transitions within $\le$2 TRs of onset, highlighting that models must be robust to temporal resolution choices.
+These works collectively define the multi-axis evaluation framework we adopt: data efficiency, temporal/acquisition shift, cross-domain shift, and stimulus/context shift.
+Recent fMRI-specific foundation models---including NeuroSTORM~\citep{wang2025towards}, SLIM-Brain~\citep{wang2025slim}, and Omni-fMRI~\citep{wang2026omni}---demonstrate large-scale pretraining on multi-site, multi-task datasets with transfer to downstream decoding, but do not explicitly evaluate temporal kernel mismatch or cross-paradigm representation stability.
+Our shift taxonomy (L1--L4) provides a structured lens for comparing generalizability claims across these works.
+In contrast to adaptation-based approaches~\citep{qin2025cora,han2026unica}, PIMSM achieves multi-axis generalizability through physics-informed architectural inductive bias alone, without frozen backbones, auxiliary adaptation modules, or shift-specific supervision.
+
+\paragraph{Multi-scale State Space Models and Multi-scale Mamba Variants.}
+Several recent works have attempted to incorporate multi-scale modeling into Mamba-based architectures.
+Ms-Mamba \citep{karadag2025ms} introduces multiple parallel Mamba blocks operating at different sampling rates ($\Delta$), which may be fixed multiples or independently learnable.
+Similarly, MS-SSM \citep{Karami2025MSSSMAM} performs multi-resolution convolutional decomposition of the input sequence and applies independent SSM modules to each scale before combining them through an input-dependent scale mixer.
+STM3 \citep{chen2025stm3} proposes a multiscale SSM that aggregates representations from different temporal scales and augments shared input-aware parameters with scale-specific biases, further extending the design via a Mixture-of-Experts framework.
+However, these approaches rely on explicit architectural branching or scale-specific parameterization, where the number and granularity of scales are externally defined. As a result, the multi-scale property is imposed at the architectural level rather than emerging from the intrinsic state-space dynamics, and typically requires duplicating recurrent modules or parameters across scales.
+Related efforts also explore multi-scale modeling through signal decomposition. For instance, WMF-Traffic \citep{li2025multi} performs explicit wavelet decomposition and applies scale-adaptive convolutions, assigning separate learnable kernels to different frequency bands. While effective, this approach similarly requires frequency-wise parameter duplication and scale-specific processing pipelines.
+To the best of our knowledge, a single SSM-based formulation in which multi-scale structure is explicitly encoded within the state-space dynamics itself — without architectural branching, frequency decomposition, or scale-wise parameter replication — remains underexplored.
+
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+We introduced \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}, motivated by the hypothesis that \emph{temporal kernel mismatch is a central source of generalization failure in neural sequence models}. By coupling discretization parameters to spectrum-derived knee frequencies and jointly constraining both $\Delta$ and $A$ in acquisition time units, PIMSM constructs a structured multi-scale kernel family that reduces mismatch under acquisition and brain-state shifts without shift-specific adaptation.
+
+Across multiple axes of structured distribution shift, PIMSM consistently improves robustness and representation stability over parameter-matched single-scale baselines. Under temporal covariate shift, PIMSM maintains the most stable latent geometry and strongest downstream performance under severe temporal truncation. Under low-resource transfer, its gains are concentrated in the extreme low-supervision regime, indicating improved sample efficiency. Under brain-state shift, PIMSM achieves the most consistent transfer from resting-state to task fMRI, with substantially lower variance across random seeds. Intervention experiments further establish representation drift as a causal lever for robustness, while scaling analyses show that multi-scale temporal structure enables additional model capacity to translate into improved stability rather than reconfiguration. Results on stimulus-genre and cross-domain shifts will further test the breadth of this effect.
+
+More broadly, our findings suggest that robustness in neural sequence modeling is not solely a matter of scale or data volume, but of aligning model dynamics with the temporal organization of the underlying biological system. For brain foundation models, preserving temporal hierarchy may be a prerequisite for stable transfer across acquisition settings, behavioral contexts, and generative regimes. Physics-informed temporal parameterization offers a lightweight and principled route toward this goal.
+
+
+\newpage
+\appendix
+
+\section{Training Details}
+\label{sec:appx:training_details}
+
+All models are trained for 35 epochs using AdamW ($\mathrm{lr} = 10^{-3}$, weight decay $= 0.1$) with cosine annealing and linear warmup. Gradient norms are clipped to 1.0. Label smoothing ($\epsilon = 0.1$) is applied for classification. Batch size is 16 for the brain-state shift experiment (Axis v) and 32 for motor decoding (Axes i--ii).
+
+The total training objective for PIMSM is:
+\begin{equation}
+\mathcal{L} = \mathcal{L}_{\mathrm{task}} + w_{\mathrm{fit}}\,\mathcal{L}_{\mathrm{fit}} + w_{\mathrm{seam}}\,\mathcal{L}_{\mathrm{seam}} + \lambda_\Delta\,\mathcal{L}_{\Delta} + \lambda_A\,\mathcal{L}_A + w_{\mathrm{hyp}}\,\mathcal{L}_{\mathrm{hyp}} + \lambda_\beta\,\mathcal{L}_{\beta},
+\end{equation}
+where:
+\begin{itemize}
+    \item $\mathcal{L}_{\mathrm{task}}$: cross-entropy classification loss (with label smoothing $\epsilon=0.1$);
+    \item $\mathcal{L}_{\mathrm{fit}}$: multi-scale MAE spectral fit loss ($w_{\mathrm{fit}} = 3.0$), averaged equally across all ROIs;
+    \item $\mathcal{L}_{\mathrm{seam}}$: piecewise continuity (seam) loss penalizing log-PSD discontinuities at $f_1, f_2$ ($w_{\mathrm{seam}} = 0.1$);
+    \item $\mathcal{L}_{\Delta} = \lambda_\Delta\,\mathbb{E}[\log(\Delta/\mathrm{TR})^2]$: TR-anchoring regularization ($\lambda_\Delta = 0.1$);
+    \item $\mathcal{L}_A = \lambda_A \sum_j (\log|\bar{A}_j| - \log a_0)^2$: $A$-scale regularization ($\lambda_A = 0.1$);
+    \item $\mathcal{L}_{\mathrm{hyp}}$: auxiliary spectral alignment loss ($w_{\mathrm{hyp}} = 0.3$);
+    \item $\mathcal{L}_{\beta}$: extreme-$\beta$ regularization penalizing exponents approaching $[0.3, 5.0]$ boundaries ($\lambda_{\beta} = 0.5$).
+\end{itemize}
+The joint anchoring of $\Delta$, $\tau$-initialization of $A$, and $\mathcal{L}_A$ constitute the default PIMSM protocol across all experiments unless an ablation removes a component.
+
+\section{Architecture Details}
+\label{sec:appx:arch_details}
+
+\subsection{Multi-Scale State-Space Block}
+
+Each PIMSM block extends the Mamba-2 Structured State Space Duality (SSD) kernel to a multi-scale setting.
+
+\textbf{Head grouping.} We employ $H = 6$ SSM heads grouped into $K = 3$ scale groups, with two heads per scale. Heads within the same scale share the discretization parameter $\Delta_k$ but maintain independent state transition matrices.
+
+\textbf{State transition initialization.} The SSM $A$ matrix is initialized as $A = -1/\tau$ with $\tau \sim \mathrm{LogUniform}(1 \times \mathrm{TR}, 100 \times \mathrm{TR})$, reflecting the physiologically motivated time-constant range of BOLD dynamics. An $A$-scale regularization $\mathcal{L}_A$ is applied to prevent $A$ from drifting away from this initialization to compensate for $\Delta$, ensuring that the joint constraint on $\tau_\text{eff}$ remains effective throughout training.
+
+\textbf{State evolution.} For each head $j$ assigned to scale $k(j)$, the discretized state update is:
+\begin{equation}
+\mathbf{h}^{(j)}_t = \bar{A}^{(j)}(\Delta_{k(j)}) \mathbf{h}^{(j)}_{t-1} + \bar{B}(\Delta_{k(j)}) \mathbf{x}_t.
+\end{equation}
+Input projections are shared across heads, while state transitions differ to capture scale-specific decay dynamics.
+
+\textbf{Scale aggregation.} Within each scale group, head outputs are averaged:
+\begin{equation}
+\mathbf{h}^{(k)}_t = \frac{1}{|J_k|} \sum_{j \in J_k} \mathbf{h}^{(j)}_t.
+\end{equation}
+
+\subsection{Cross-Scale Fusion}
+
+Scale-specific representations are concatenated and passed through a lightweight cross-scale attention module:
+\begin{align}
+\mathbf{h}_t &= \mathrm{Concat}(\mathbf{h}^{(1)}_t, \mathbf{h}^{(2)}_t, \mathbf{h}^{(3)}_t), \\
+\mathrm{Attn}(Q, K, V) &= \mathrm{softmax}\!\left( \frac{QK^\top}{\sqrt{d}} \right) V.
+\end{align}
+This allows high- and low-frequency information to be selectively combined while preserving structured multi-scale dynamics.
+
+\section{Self-Supervised Pretraining Details}
+\label{sec:appx:pretraining}
+
+\paragraph{Uniform spatiotemporal masking.}
+We adopt a uniform masking strategy applied jointly over the temporal and spatial dimensions of the input sequence.
+Each $(t,r)$ location (time $t$, ROI $r$) is masked independently with a fixed probability of $10\%$.
+To further increase reconstruction difficulty and encourage learning of spatial dependencies, we additionally apply ROI-level temporal masking: for each ROI, contiguous time points corresponding to approximately $30\%$ of the sequence length are randomly selected and masked.
+
+\paragraph{SpectralHyperNet during pretraining.}
+SpectralHyperNet operates on the \emph{original unmasked} input $x_{1:T}$ to estimate the piecewise power-law parameters:
+\[
+(f_1, f_2, \beta_1, \beta_2, \beta_3) = H_{\phi}(x_{1:T}).
+\]
+Importantly, the knee frequencies $(f_1, f_2)$ determine the scale-specific discretization parameters $\Delta_k$ (via the energy-weighted center frequency mapping $\Delta_k = \Psi(f_{c,k})$), while the scaling exponents $\beta_k$ serve as supervision targets for the spectral fit loss and inform the energy-weighted computation of $f_{c,k}$; they do not appear explicitly in the $\Delta_k$ formula. This design ensures that spectral estimates remain stable even when the input to the SSM backbone is partially corrupted by masking.
+
+\paragraph{Training objective.}
+The reconstruction loss is an $L_1$ loss over masked positions only:
+\[
+\mathcal{L}_{\text{pretrain}} = \| x_{\text{masked}} - \hat{x}_{\text{masked}} \|_1.
+\]
+
+% -----------------------------------------------------------------------
+% ABCD TR downsampling section — commented out (harmonized data; site effect removed)
+% -----------------------------------------------------------------------
+% \section{ABCD Resting-State: Temporal-Resolution Robustness and Site CKA}
+% \label{sec:appx:abcd_tr}
+%
+% \paragraph{Temporal-resolution (TR downsampling).}
+% We examine robustness when the effective TR is increased by progressively downsampling the resting-state sequence. Table~\ref{tab:abcd_tr_downsample} reports sex-classification accuracy at TR$_\text{eff} \in \{0.8, 1.6, 3.2\}$\,s, evaluated under a random-split protocol.
+%
+% \begin{table}[htbp]
+% \centering
+% \small
+% \begin{tabular}{lcccc}
+% \toprule
+% Model & TR$=0.8$\,s & TR$=1.6$\,s & TR$=3.2$\,s & Drop ($0.8\!\to\!3.2$\,s) \\
+% \midrule
+% Mamba2 & $0.731 \pm 0.020$ & $0.724 \pm 0.019$ & $0.702 \pm 0.014$ & $0.029$ \\
+% \midrule
+% \textbf{PIMSM} & $\mathbf{0.750 \pm 0.005}$ & $\mathbf{0.758 \pm 0.002}$ & $\mathbf{0.753 \pm 0.014}$ & $-0.003$ \\
+% \bottomrule
+% \end{tabular}
+% \caption{
+% \textbf{Temporal-resolution robustness on ABCD resting-state fMRI (sex classification).}
+% PIMSM accuracy remains essentially flat across a $4\times$ increase in effective TR (absolute drop: $0.3$\,pp), whereas Mamba2 degrades by $2.9$\,pp.
+% Each condition is evaluated independently (three seeds).
+% }
+% \label{tab:abcd_tr_downsample}
+% \end{table}
+%
+% PIMSM exhibits near-flat accuracy across all TR conditions (absolute drop: $0.3$\,pp from TR$=0.8$\,s to TR$=3.2$\,s), while Mamba2 degrades by $2.9$\,pp under the same $4\times$ downsampling. Notably, PIMSM accuracy slightly \emph{increases} at TR$=1.6$\,s, consistent with the observation that SpectralHyperNet re-estimates knee frequencies dynamically for each input, allowing the model to recalibrate its temporal hierarchy to the new effective sampling rate without additional training.
+%
+% \paragraph{Train-vs.-test-site CKA (layer-wise).}
+% We compute linear CKA between pooled backbone representations on training sites (1--17) and held-out test sites (18--22) for each layer and architecture. Figure~\ref{fig:abcd_train_test_cka} shows that all models retain moderate cross-site similarity in deeper layers; PIMSM's curve can be interpreted alongside the site-holdout accuracy gap in Table~\ref{tab:abcd_site_holdout}.
+%
+% \begin{figure*}[htbp]
+% \centering
+% \includegraphics[width=0.235\textwidth]{figures/train_vs_test_cka_pimsm.png}\hfill
+% \includegraphics[width=0.235\textwidth]{figures/train_vs_test_cka_mamba2.png}\hfill
+% \includegraphics[width=0.235\textwidth]{figures/train_vs_test_cka_transformer.png}\hfill
+% \includegraphics[width=0.235\textwidth]{figures/train_vs_test_cka_1dcnn.png}
+% \caption{
+% \textbf{Layer-wise linear CKA between train-site and held-out-site representations (ABCD resting-state).}
+% Each panel corresponds to one architecture (PIMSM, Mamba2, Transformer, 1D-CNN). Higher CKA indicates more aligned geometry across the scanner-site split.
+% }
+% \label{fig:abcd_train_test_cka}
+% \end{figure*}
+% -----------------------------------------------------------------------
+
+\section{HCP Motor Decoding under TR Shift: Additional Details}
+\label{sec:appx:hcp_tr_shift}
+
+This appendix provides supporting detail for Section~\ref{sec:results:hcp_tr_shift}. Main accuracy and CKA/dCor tables are reported in the main text (Tables~\ref{tab:drift2tr}--\ref{tab:drift3tr}). Here we include drift intervention tables, scaling figures, and Figure~\ref{fig:tr_shift_stability}.
+
+
+\paragraph{Drift intervention.}
+We introduce explicit drift regularization for Mamba2: $\mathcal{L} = \mathcal{L}_{\text{task}} + \lambda D(z(x^{\text{Full}}), z(x^{\text{Shift}}))$. This model (Mamba2+drift) improves representation stability and decoding accuracy under TR truncation without degrading ID performance, establishing drift as a causal lever for robustness. PIMSM achieves comparable stability through architecture alone, without explicit shift supervision. See Tables~\ref{tab:drift_intervention_2tr} and~\ref{tab:drift_intervention_3tr}.
+
+\paragraph{Scaling behavior.}
+Larger PIMSM models exhibit increasingly stable representations under temporal shift, whereas single-scale SSMs fail to translate additional capacity into robustness (Figure~\ref{fig:scaling}). Additional WeightWatcher analysis (Section~\ref{sec:appx:weightwatcher}) corroborates that multi-scale structure prevents representation homogenization.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/PIMSM_Fig3.pdf}
+\caption{
+\textbf{Scaling behavior under temporal truncation (Full TR $\rightarrow$ 2TR).}
+(a) Decoding accuracy vs model size. (b) Accuracy drop relative to Full TR. (c--d) CKA and dCor between Full TR and 2TR representations.
+}
+\label{fig:scaling}
+\end{figure}
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+Model & Full TRs & 2 TRs & CKA (Full$\leftrightarrow$2TR) & dCor (Full$\leftrightarrow$2TR) \\
+\midrule
+PIMSM & 0.987$\pm$0.007 & 0.933$\pm$0.016 & 0.812$\pm$0.033 & 0.846$\pm$0.022 \\
+Mamba2+drift & 0.987$\pm$0.004 & 0.923$\pm$0.009 & 0.837$\pm$0.021 & 0.854$\pm$0.019 \\
+\bottomrule
+\end{tabular}
+\caption{Drift intervention: Full TR $\rightarrow$ 2 TR.}
+\label{tab:drift_intervention_2tr}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+Model & Full TRs & 3 TRs & CKA (Full$\leftrightarrow$3TR) & dCor (Full$\leftrightarrow$3TR) \\
+\midrule
+PIMSM & 0.987$\pm$0.007 & 0.944$\pm$0.005 & 0.854$\pm$0.022 & 0.878$\pm$0.020 \\
+Mamba2+drift & 0.987$\pm$0.004 & 0.939$\pm$0.011 & 0.854$\pm$0.036 & 0.879$\pm$0.025 \\
+\bottomrule
+\end{tabular}
+\caption{Drift intervention: Full TR $\rightarrow$ 3 TR.}
+\label{tab:drift_intervention_3tr}
+\end{table}
+
+
+\section{Low-Resource Generalization: Additional Details}
+\label{sec:appx:data_scarce}
+
+Results are reported in Table~\ref{tab:data_scarce} and Section~\ref{sec:results:data_scarce} of the main text.
+
+
+\section{WeightWatcher Analysis: Layer-wise Power-Law Exponents}
+\label{sec:appx:weightwatcher}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/weightwatcher_motor_full_TR.png}
+\caption{
+\textbf{WeightWatcher layer-wise $\alpha$ distributions under Full TR (HCP motor task fMRI).}
+Each point represents the power-law exponent $\alpha$ of the empirical spectral density of a weight matrix.
+The red dashed line ($\alpha = 6$) marks the boundary above which weights are statistically indistinguishable from random matrices;
+the green dashed line ($\alpha = 2$) indicates the onset of over-training.
+PIMSM exhibits heterogeneous $\alpha$ values (1.77--3.69) spread across a wide range, indicating that different layers operate at distinct feature-complexity regimes.
+Mamba2 and Transformer concentrate near $\alpha \approx 2$, suggesting that most layers have reached training saturation.
+1D-CNN has only one analyzable layer (remaining layers contain weight matrices too small for reliable spectral fitting).
+}
+\label{fig:ww_full_tr}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/weightwatcher_motor_2TR.png}
+\caption{
+\textbf{WeightWatcher layer-wise $\alpha$ distributions under 2 TR early-window condition (extreme temporal truncation).}
+Under the 2 TR OOD condition---an extreme data-scarce scenario in which only two time points are available per trial---PIMSM maintains a wide $\alpha$ spread (1.75--5.29), indicating that layer-wise representational diversity is preserved despite the severely reduced input.
+In contrast, Mamba2 collapses even more uniformly to $\alpha \approx 2$ (all 37 analyzable layers saturate simultaneously), suggesting that the absence of multi-scale inductive bias leads to representation homogenization when learning signals are scarce.
+The Transformer retains a similar distribution to its Full TR counterpart but with reduced variance.
+}
+\label{fig:ww_2tr}
+\end{figure}
+
+WeightWatcher~\citep{martin2021predicting} quantifies the implicit self-regularization of each weight matrix by fitting the tail of its empirical spectral density (ESD) to a power law $\rho(\lambda) \propto \lambda^{-\alpha}$.
+Matrices with $\alpha \in [2, 6]$ are considered \emph{well-trained}: $\alpha < 2$ indicates over-training (insufficient regularization), and $\alpha > 6$ indicates that the matrix is statistically indistinguishable from a random initialization.
+Note that WeightWatcher analyzes 2D matrices only; 4D convolution tensors (as in 1D-CNN) are excluded except for the final linear layer.
+
+\paragraph{Full TR condition (Figure~\ref{fig:ww_full_tr}).}
+Under the standard Full TR condition, PIMSM exhibits $\alpha \in [1.77, 3.69]$ with notable layer-to-layer variation.
+This heterogeneity reflects the multi-scale inductive bias of the architecture: different PIMSM layers specialize to capture temporal correlations at different scales, resulting in layers with distinct implicit regularization properties.
+In contrast, Mamba2 and Transformer accumulate near $\alpha \approx 2.0$, indicating that most layers are in a saturated learning state.
+These models may be efficiently encoding in-distribution patterns but leave little representational capacity available for adaptation under shift.
+
+\paragraph{2 TR early-window condition (Figure~\ref{fig:ww_2tr}).}
+Under the extreme 2 TR condition, PIMSM's $\alpha$ distribution widens further (1.75--5.29).
+Rather than homogenizing under reduced input, the multi-scale architecture preserves layer-wise role differentiation---deeper layers tend toward higher $\alpha$ (less specialized), while early layers remain well-fitted---suggesting that the model gracefully degrades without global collapse.
+Mamba2, by contrast, narrows its $\alpha$ distribution toward $\approx 2.0$ with near-zero variance across all 37 analyzable layers, consistent with representation homogenization under information-sparse inputs.
+The Transformer shows moderate variance reduction but remains closer to its Full TR distribution, perhaps due to the global attention mechanism retaining some diversity.
+
+\paragraph{Interpretation.}
+These layer-wise spectral analyses provide weight-level corroboration for the conclusion drawn from CKA and distance correlation measurements:
+PIMSM's multi-scale structure actively resists representation collapse when temporal context is severely reduced.
+The preserved heterogeneity of $\alpha$ values across layers suggests that the physics-informed multi-scale parameterization functions as an implicit regularizer that prevents the entire model from collapsing to a single dominant feature regime under OOD conditions.
+
+
+\section{Effect of Pretraining: Finetuning and Linear Probing}
+\label{sec:appx:pretrain}
+
+\subsection{Finetuning from Resting-State Pretraining}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lccccc}
+\toprule
+Model & From Scratch & Full TRs & 2 TRs & CKA & dCor \\
+\midrule
+PIMSM & $0.987 \pm 0.007$ & $0.987 \pm 0.004$ & $\mathbf{0.937 \pm 0.009}$ & $\mathbf{0.867 \pm 0.004}$ & $\mathbf{0.889 \pm 0.009}$ \\
+Mamba2 & $0.983 \pm 0.002$ & $0.987 \pm 0.007$ & $0.933 \pm 0.011$ & $0.847 \pm 0.024$ & $0.860 \pm 0.024$ \\
+\midrule
+Model & From Scratch & Full TRs & 3 TRs & CKA & dCor \\
+\midrule
+PIMSM & $0.987 \pm 0.007$ & $0.987 \pm 0.004$ & $\mathbf{0.949 \pm 0.012}$ & $\mathbf{0.878 \pm 0.005}$ & $\mathbf{0.899 \pm 0.002}$ \\
+Mamba2 & $0.983 \pm 0.002$ & $0.987 \pm 0.007$ & $0.944 \pm 0.006$ & $0.874 \pm 0.010$ & $0.887 \pm 0.011$ \\
+\bottomrule
+\end{tabular}
+\caption{
+Effect of self-supervised pretraining on resting-state fMRI followed by finetuning on HCP motor task fMRI.
+Representation similarity (CKA, dCor) is measured between Full TR and temporally downsampled inputs.
+Pretraining consistently improves OOD robustness for both models, with PIMSM retaining a small but consistent advantage in representation stability.
+}
+\label{tab:pretrain_finetune}
+\end{table}
+
+We evaluate whether self-supervised pretraining on resting-state fMRI improves downstream OOD robustness when models are subsequently finetuned on motor task fMRI (Table~\ref{tab:pretrain_finetune}).
+Pretraining consistently raises OOD accuracy and representation similarity relative to training from scratch for both PIMSM and Mamba2.
+Under the 2 TR condition, pretrained PIMSM achieves $0.937 \pm 0.009$ versus $0.933 \pm 0.011$ for pretrained Mamba2; pretrained PIMSM also retains higher CKA ($0.867 \pm 0.004$) and dCor ($0.889 \pm 0.009$).
+Under the 3 TR condition, pretrained PIMSM reaches $0.949 \pm 0.012$ versus $0.944 \pm 0.006$ for Mamba2.
+These margins are consistent but modest, suggesting that the primary benefit of pretraining lies in improving representation stability under shift rather than raising the absolute performance ceiling.
+
+\subsection{Linear Probing Evaluation}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lccccc}
+\toprule
+Model & From Scratch & Full TRs & 2 TRs & CKA & dCor \\
+\midrule
+PIMSM & $0.987 \pm 0.007$ & $0.934 \pm 0.015$ & $\mathbf{0.748 \pm 0.003}$ & $0.444 \pm 0.029$ & $\mathbf{0.469 \pm 0.020}$ \\
+Mamba2 & $0.983 \pm 0.002$ & $\mathbf{0.936 \pm 0.015}$ & $0.730 \pm 0.015$ & $\mathbf{0.448 \pm 0.041}$ & $0.462 \pm 0.036$ \\
+\midrule
+Model & From Scratch & Full TRs & 3 TRs & CKA & dCor \\
+\midrule
+PIMSM & $0.987 \pm 0.007$ & $0.934 \pm 0.015$ & $\mathbf{0.791 \pm 0.027}$ & $0.470 \pm 0.032$ & $\mathbf{0.489 \pm 0.026}$ \\
+Mamba2 & $0.983 \pm 0.002$ & $\mathbf{0.936 \pm 0.015}$ & $0.767 \pm 0.023$ & $\mathbf{0.475 \pm 0.042}$ & $0.484 \pm 0.035$ \\
+\bottomrule
+\end{tabular}
+\caption{
+Linear probing evaluation of pretrained models on HCP motor task fMRI.
+The backbone is frozen and only a linear classifier is trained.
+CKA and dCor are measured between Full TR and downsampled representations of the frozen backbone.
+Both models achieve comparable Full TR accuracy ($\approx 0.93$), but PIMSM maintains slightly higher OOD accuracy under 2 TR and 3 TR conditions.
+}
+\label{tab:linear_probe}
+\end{table}
+
+Under strict linear probing, both PIMSM and Mamba2 achieve similar Full TR accuracy ($\approx 0.93$).
+OOD accuracy drops substantially for both models relative to the finetuning setting (Table~\ref{tab:pretrain_finetune}), reflecting the difficulty of adapting frozen representations to temporal-resolution shift via a linear readout alone.
+PIMSM maintains a consistent advantage: $0.748 \pm 0.003$ vs.\ $0.730 \pm 0.015$ at 2 TR, and $0.791 \pm 0.027$ vs.\ $0.767 \pm 0.023$ at 3 TR.
+CKA values under the frozen setting are substantially lower than under finetuning, suggesting that the full representational benefit of physics-informed pretraining is realized during downstream adaptation rather than through passively linearly separable representations.
+These results are consistent with the view that multi-scale temporal modeling improves the plasticity of learned features during finetuning rather than directly encoding task geometry.
+
+
+\section{Piecewise Power-Law Spectra Across Datasets and Modalities}
+\label{sec:appx:psd_multifractal}
+
+\begin{figure}[htbp]
+\centering
+\begin{minipage}[b]{0.49\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/resting_psd_multifractal.png}
+\end{minipage}
+\hfill
+\begin{minipage}[b]{0.49\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/motor_psd_multifractal.png}
+\end{minipage}
+
+\vspace{0.5em}
+
+\begin{minipage}[b]{0.49\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/abcd_psd_multifractal.png}
+\end{minipage}
+\hfill
+\begin{minipage}[b]{0.49\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/sleepedf_psd_multifractal.png}
+\end{minipage}
+
+\caption{
+\textbf{Piecewise power-law structure of empirical PSD across neural datasets.}
+\textbf{(top left)} HCP resting-state fMRI (TR$=0.72$\,s, 360 cortical ROIs). The BOLD PSD exhibits distinct scaling regimes separated by knee frequencies $(f_1, f_2)$, consistent with the piecewise power-law model assumed by SpectralHyperNet.
+\textbf{(top right)} HCP motor task fMRI (TR$=0.72$\,s, 360 ROIs). Task-evoked BOLD signals display a similar piecewise structure, indicating that the multi-scale power-law structure is not restricted to resting-state dynamics.
+\textbf{(bottom left)} ABCD resting-state fMRI. The piecewise power-law structure is preserved across a large developmental cohort with different acquisition parameters.
+\textbf{(bottom right)} PhysioNet SleepEDF EEG (100\,Hz, scalp electrodes). Despite the higher sampling rate and different neural modality, the EEG PSD continues to display piecewise power-law scaling across low and high frequency bands.
+In each panel, the fitted piecewise model (dashed lines) accurately captures the observed spectral slope changes at the estimated knee frequencies, supporting the core spectral modeling assumption of PIMSM.
+}
+\label{fig:appx:psd_neural}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{minipage}[b]{0.49\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/weather5k_psd_tmp.png}
+\end{minipage}
+\hfill
+\begin{minipage}[b]{0.49\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/weather5k_psd_dew.png}
+\end{minipage}
+
+\vspace{0.5em}
+
+\begin{minipage}[b]{0.49\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/weather5k_psd_slp.png}
+\end{minipage}
+\hfill
+\begin{minipage}[b]{0.49\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/weather5k_psd_wnd_angle.png}
+\end{minipage}
+
+\vspace{0.5em}
+
+\begin{minipage}[b]{0.49\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/weather5k_psd_wnd_rate.png}
+\end{minipage}
+
+\caption{
+\textbf{Piecewise power-law structure of empirical PSD for Weather-5K (per variable).}
+Weather-5K meteorological time series: temperature (tmp), dew point (dew), sea-level pressure (slp), wind angle (wnd\_angle), and wind rate (wnd\_rate).
+Because PIMSM fits knee frequencies \emph{per variable}, each meteorological channel is analyzed independently rather than aggregated.
+The piecewise power-law structure is consistent across all five variables, indicating that the spectral scaling assumption generalises beyond neural data.
+In each panel, the fitted piecewise model (dashed lines) accurately captures the observed spectral slope changes at the estimated knee frequencies.
+}
+\label{fig:appx:psd_weather}
+\end{figure}
+
+We present empirical power spectral densities (PSDs) for five datasets spanning two neural modalities and one non-neural modality (Figures~\ref{fig:appx:psd_neural} and~\ref{fig:appx:psd_weather}).
+Across all settings, the log-log PSD exhibits a piecewise linear structure with distinct scaling exponents $\beta_k$ separated by knee frequencies $(f_1, f_2)$, consistent with the piecewise power-law model in Eq.~\eqref{eq:piecewise_powerlaw}.
+For the Weather-5K dataset, we fit the piecewise model \emph{independently per meteorological variable} (temperature, dew point, sea-level pressure, wind angle, wind rate), since each channel has its own characteristic spectral profile; PIMSM therefore infers a separate set of knee frequencies and scale-specific $\Delta_k$ for each variable.
+This empirical regularity motivates the SpectralHyperNet-based scale inference at the heart of PIMSM: rather than imposing a single-exponent scaling law, we fit a $K=3$ regime piecewise model whose knee frequencies adaptively parameterize the scale-specific discretization parameters $\Delta_k$.
+
+\section{Multi-scale Kernels Reduce Approximation Error to Power-Law Targets}
+\label{sec:appx:kernel_approx}
+
+We provide a theoretical result that formalizes the advantage of multi-scale exponential mixtures over single-scale models when approximating power-law decay kernels, which arise naturally from the piecewise power-law spectral structure of neural signals.
+
+\paragraph{Setup.}
+Consider the power-law decay kernel
+\begin{equation}
+g(t) = (1+t)^{-\alpha}, \qquad \alpha > 1,
+\label{eq:powerlaw_kernel}
+\end{equation}
+which corresponds to long-memory temporal dependence.
+This arises when the effective temporal kernel of a system integrates contributions from a continuum of timescales.
+Let $\mathcal{G}_K$ denote the family of mixtures of $K$ exponentials:
+\begin{equation}
+\mathcal{G}_K \;=\; \left\{ \tilde{g}(t) = \sum_{k=1}^{K} a_k\, e^{-\lambda_k t} \;:\; a_k \ge 0,\; \sum_{k=1}^K a_k = 1,\; \lambda_k > 0 \right\}.
+\label{eq:G_K}
+\end{equation}
+A single-scale SSM with a fixed discretization parameter corresponds to $K=1$, while PIMSM with $K$ scales corresponds to $\mathcal{G}_K$.
+
+\begin{proposition}[Multi-scale approximation of power-law kernels]
+\label{prop:kernel_approx}
+Let $g(t) = (1+t)^{-\alpha}$ with $\alpha > 1$.
+There exists a constant $C_\alpha > 0$ depending only on $\alpha$ such that:
+\begin{equation}
+\inf_{\tilde{g} \in \mathcal{G}_K} \|g - \tilde{g}\|_{L^1[0,\infty)} \;\leq\; C_\alpha \cdot K^{-(\alpha-1)}.
+\label{eq:multi_scale_approx_bound}
+\end{equation}
+In contrast, for $K=1$:
+\begin{equation}
+\inf_{\tilde{g} \in \mathcal{G}_1} \|g - \tilde{g}\|_{L^1[0,\infty)} \;=\; \Omega(1),
+\label{eq:single_scale_floor}
+\end{equation}
+i.e., the approximation error is bounded away from zero by a positive constant independent of the choice of $\lambda_1$.
+\end{proposition}
+
+\paragraph{Proof sketch.}
+The key insight is the Stieltjes (Laplace) representation of $g$:
+\begin{equation}
+g(t) = (1+t)^{-\alpha} = \frac{1}{\Gamma(\alpha)} \int_0^\infty \lambda^{\alpha-1} e^{-\lambda} e^{-\lambda t}\, d\lambda \;\propto\; \int_0^\infty e^{-\lambda t}\, \mu(\lambda)\, d\lambda,
+\label{eq:stieltjes}
+\end{equation}
+where the mixing measure is $\mu(\lambda) \propto \lambda^{\alpha-2}$ (up to normalization) for $\lambda \in (0, \infty)$.
+Thus $g$ is a continuous mixture of exponentials, and the best $K$-exponential approximation corresponds to a $K$-point quadrature rule for the measure $\mu$.
+
+\emph{Upper bound (Eq.~\eqref{eq:multi_scale_approx_bound}).}
+Choose $\lambda_1 < \lambda_2 < \cdots < \lambda_K$ as the nodes of a $K$-point Gauss--Jacobi quadrature rule adapted to $\mu$, with corresponding weights $a_k$.
+By standard quadrature error theory, the $L^2$ error in approximating $\int_0^\infty e^{-\lambda t} \mu(\lambda)\, d\lambda$ decays as $O(K^{-2(\alpha-1)})$ for smooth $\mu$ with polynomial growth $\mu(\lambda) \propto \lambda^{\alpha-2}$.
+Applying Cauchy--Schwarz to convert from $L^2$ to $L^1[0,\infty)$ yields Eq.~\eqref{eq:multi_scale_approx_bound}.
+
+\emph{Lower bound (Eq.~\eqref{eq:single_scale_floor}).}
+A single exponential $a_1 e^{-\lambda_1 t}$ cannot reproduce the algebraic tail of $(1+t)^{-\alpha}$: for any $\lambda_1 > 0$, the $L^1$ difference $\int_0^\infty |(1+t)^{-\alpha} - a_1 e^{-\lambda_1 t}|\, dt$ remains bounded away from zero because exponentials decay faster than any power law.
+This follows from the fact that $e^{-\lambda t} = o((1+t)^{-\alpha})$ as $t \to \infty$ for all $\lambda > 0$ and $\alpha > 1$, giving an $\Omega(1)$ tail discrepancy regardless of the choice of $a_1, \lambda_1$.
+
+\paragraph{Implication for PIMSM.}
+Proposition~\ref{prop:kernel_approx} establishes that the approximation error of $\mathcal{G}_K$ to a power-law kernel decreases at rate $K^{-(\alpha-1)}$, while a single exponential ($K=1$) incurs a nonvanishing floor error.
+For $\alpha = 2$ (canonical $1/f$ scaling), $K = 3$ reduces the upper bound by a factor of $3^{(\alpha-1)} = 3$ relative to $K=1$.
+Combined with Lemma~\ref{lem:kernel_mismatch} (Section~\ref{sec:theory:kernelbound}), this implies that a 3-scale SSM can achieve up to $3\times$ smaller representation error than a single-scale model when the target kernel is power-law.
+
+\paragraph{Physics-informed quadrature.}
+Proposition~\ref{prop:kernel_approx} shows that \emph{any} $K$-point quadrature achieves the $K^{-(\alpha-1)}$ rate.
+PIMSM's SpectralHyperNet provides a structured quadrature: the knee frequencies $(f_1, f_2)$ inferred from the empirical PSD determine the quadrature nodes $\{\lambda_k\}$ in a data-adaptive manner.
+Compared to randomly initialized or freely learnable scale parameters (which may cluster in suboptimal regions of the $\lambda$ axis), the physics-informed initialization places the quadrature nodes near the spectral knees of the target distribution, yielding a better-conditioned approximation.
+This provides a theoretical mechanism underlying the empirical advantage of SpectralHyperNet-derived $\Delta$ parameters over random or learnable alternatives in the TR-shift experiments (Appendix~\ref{sec:appx:hcp_tr_shift}).
+
+\section{Delta Mapping Ablation: Mixing Weight and Normalization Mode}
+\label{sec:appx:delta_ablation}
+
+The per-band frequency-to-delta mapping combines global band position $p_k$ and within-band normalized frequency $t_k$ via $m_k = p_k(1-w) + w\,t_k$. To assess sensitivity to this design choice, we ablate (i) the mixing weight $w \in \{0, 0.3, 0.5, 1.0\}$ and (ii) normalization mode (global vs.\ per-band). At $w=0$, $m_k = p_k$ (band position only); at $w=1$, $m_k = t_k$ (within-band variation only); the default $w=0.3$ balances both. Global normalization maps $f_{c,k}$ directly onto $[\Delta_{\min}, \Delta_{\max}]$ without per-band boundaries. These ablations allow reviewers to verify that the core principle---higher $f \to$ larger $\Delta$---drives the benefit, rather than the specific mixing formula. Ablation results (motor decoding accuracy and CKA under TR truncation vs.\ $w$ and normalization mode) can be reported in the supplement or camera-ready version.
+
+\bibliography{references}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newpage
+\input{checklist.tex}
+
+
+\end{document}
