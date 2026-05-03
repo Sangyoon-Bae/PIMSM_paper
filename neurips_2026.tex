@@ -461,10 +461,10 @@ To evaluate Level~2 brain-state generalization, we train all models from scratch
 This modality-shift protocol directly tests whether representations learned under spontaneous brain dynamics transfer to task-evoked neural activity, using an identical sequence length to isolate the generative regime change from any temporal context difference.
 Models are trained and evaluated using three random seeds; we report mean and standard deviation of test accuracy.
 
-\paragraph{Naturalistic fMRI — stimulus-genre shift (SitCom$\to$documentary).}
-We evaluate stimulus-genre generalizability using a naturalistic fMRI dataset in which subjects watched sitcom episodes during scanning (training/validation split) and were subsequently scanned during documentary clips (test split).
-This stimulus-genre distribution shift preserves subject identity, acquisition hardware, and preprocessing pipeline while changing only the stimulus genre distribution, providing a clean test of whether learned representations depend on dataset-specific low-level statistics or encode genre-invariant neural dynamics.
-fMRI time series were extracted from the same 360-region HCPMMP1 atlas and z-score normalized per run.
+% \paragraph{Naturalistic fMRI — stimulus-genre shift (SitCom$\to$documentary).}
+% We evaluate stimulus-genre generalizability using a naturalistic fMRI dataset in which subjects watched sitcom episodes during scanning (training/validation split) and were subsequently scanned during documentary clips (test split).
+% This stimulus-genre distribution shift preserves subject identity, acquisition hardware, and preprocessing pipeline while changing only the stimulus genre distribution, providing a clean test of whether learned representations depend on dataset-specific low-level statistics or encode genre-invariant neural dynamics.
+% fMRI time series were extracted from the same 360-region HCPMMP1 atlas and z-score normalized per run.
 
 \paragraph{Weather-5K (cross-domain shift, Level 4).}
 We evaluate cross-domain generalizability on Weather-5K~\citep{han2026unica}, a large-scale meteorological time-series benchmark spanning 5,000 global weather stations.
@@ -641,17 +641,7 @@ PIMSM achieves the strongest performance in the extreme low-data regime (1\%).
 \label{tab:data_scarce}
 \end{table}
 
-\subsection{Axis (iii): Stimulus-Genre Shift — Naturalistic fMRI (SitCom→Documentary, Level 3)}
-\label{sec:results:sitcom}
-
-We evaluate generalizability under stimulus-genre shift (L3) by training on naturalistic fMRI recorded during sitcom episodes and testing on documentary clips from the same subjects.
-This cross-stimulus distribution shift isolates genre distribution as the sole shifting variable, with acquisition hardware, preprocessing, and subject identity held constant---providing a clean test of whether learned representations encode genre-invariant neural dynamics or depend on dataset-specific low-level statistics.
-Table~\ref{tab:sitcom} reports decoding accuracy and representation stability (CKA, dCor between sitcom and documentary embeddings) for PIMSM and parameter-matched baselines.
-
-% TODO: fill in results once experiments are complete
-\textbf{[to be filled]}
-
-\subsection{Axis (iv): Cross-Domain Shift — Weather-5K (Level 4)}
+\subsection{Axis (iii): Cross-Domain Shift — Weather-5K (Level 4)}
 \label{sec:results:weather}
 
 We evaluate cross-domain generalizability on Weather-5K~\citep{han2026unica} with five held-out meteorological variables as OOD targets (L4).
@@ -662,7 +652,7 @@ Table~\ref{tab:weather} reports forecasting error (MSE/MAE) on held-out variable
 % TODO: fill in results once experiments are complete
 \textbf{[to be filled]}
 
-\subsection{Axis (v): Brain-State Shift — Resting-State Training → Task Generalization (Level 2)}
+\subsection{Axis (iv): Brain-State Shift — Resting-State Training → Task Generalization (Level 2)}
 \label{sec:results:brainstateshift}
 
 We evaluate Level~2 brain-state generalization under the from-scratch modality-shift protocol described in Section~\ref{sec:methods}: models are trained on HCP resting-state fMRI and evaluated on motor-task fMRI without any domain adaptation (see Methods for details).
