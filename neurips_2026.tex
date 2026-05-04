@@ -443,13 +443,8 @@ PIMSM achieves the strongest performance in the extreme low-data regime (1\%).
 \subsection{Axis (iii): Brain-State Shift --- Resting-State → Task Generalization}
 \label{sec:results:brainstateshift}
 
-We evaluate Axis (iii) brain-state generalization under the from-scratch state-shift protocol described in Section~\ref{sec:methods}: models are trained on HCP resting-state fMRI and evaluated on motor-task fMRI without any domain adaptation (see Methods for details).
-This setting tests whether physics-informed temporal kernels---derived from the resting-state spectral structure---remain informative when the generative regime shifts from spontaneous to task-evoked neural activity.
-
-Table~\ref{tab:brainstateshift} reports sex classification accuracy on the task-fMRI test split for PIMSM and parameter-matched baselines (three seeds each).
-PIMSM achieves the highest mean accuracy ($0.632\pm0.013$) while exhibiting markedly lower cross-seed variance than all baselines.
-Mamba2 ($0.591\pm0.038$), 1D-CNN ($0.589\pm0.040$), and Transformer ($0.554\pm0.063$) show variance $3$--$5\times$ larger than PIMSM, indicating that their representations reconfigure differently across random initializations when transferred across generative regimes.
-This consistency advantage---rather than raw accuracy alone---is the key empirical signature predicted by our kernel mismatch theory: a physics-informed multi-scale kernel family covers a broader spectral range, structurally reducing sensitivity to the resting$\leftrightarrow$task regime change (Section~\ref{sec:theory:multiscale}).
+We train on HCP resting-state fMRI and evaluate on motor-task fMRI without adaptation, testing whether temporal kernels learned from spontaneous dynamics remain useful under task-evoked dynamics.
+PIMSM achieves the highest accuracy and substantially lower cross-seed variance (Table~\ref{tab:brainstateshift}), suggesting that the multi-scale kernel family reduces sensitivity to resting$\leftrightarrow$task reconfiguration rather than merely improving the mean score.
 
 \begin{table}[htbp]
 \centering
