@@ -473,14 +473,14 @@ PIMSM achieves the highest accuracy and $3$--$5\times$ lower cross-seed variance
 
 We evaluate whether PIMSM's physics-informed multi-scale temporal structure---grounded in spectral power-law universality---transfers to meteorological dynamics without any domain-specific adaptation.
 Weather-5K includes heterogeneous targets with different physical units, so aggregate forecasting error can obscure which variables benefit from multi-scale temporal modeling.
-We therefore report variable-wise MAE for temperature, sea-level pressure, dew point, wind rate, and directional wind components (Table~\ref{tab:weather}); the benchmark is evaluated under calendar, temporal-shift, and spatial-shift splits.
+We therefore report variable-wise MAE for temperature, sea-level pressure, dew point, wind rate, and wind angle components (Table~\ref{tab:weather}); the benchmark is evaluated under calendar, temporal-shift, and spatial-shift splits.
 
 \begin{table}[htbp]
 \centering
 \small
 \begin{tabular}{lcccccc}
 \toprule
-Model & tmp & slp & dew & wind rate & wind cos & wind sin \\
+Model & TMP & SLP & DEW & Wind Rate & Wind Angle (cos) & Wind Angle (sin) \\
 \midrule
 Mamba2      & -- & -- & -- & -- & -- & -- \\
 1D-CNN      & -- & -- & -- & -- & -- & -- \\
@@ -491,7 +491,7 @@ Transformer & -- & -- & -- & -- & -- & -- \\
 \end{tabular}
 \caption{
 \textbf{Weather-5K cross-domain forecasting (Axis iv).}
-Variable-wise MAE is reported for temperature (tmp), sea-level pressure (slp), dew point (dew), wind rate, and directional wind components (cos/sin). PIMSM is applied without domain-specific adaptation; results to be filled upon experiment completion.
+Variable-wise MAE is reported for temperature (TMP), sea-level pressure (SLP), dew point (DEW), wind rate, and wind angle components (cos/sin). PIMSM is applied without domain-specific adaptation; results to be filled upon experiment completion.
 }
 \label{tab:weather}
 \end{table}
