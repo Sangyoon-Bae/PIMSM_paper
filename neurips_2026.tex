@@ -165,7 +165,7 @@ Such shifts are practically important because TR-level resolution affects fMRI d
 
 Let $e \in \mathcal{E}$ index an acquisition or domain condition (fMRI TR, brain state, scanner/site, meteorological station regime, etc.).
 A shift $e \to e'$ alters the effective temporal statistics of the observed signal $x_{1:T} \in \mathbb{R}^d$ while preserving the downstream task definition.
-We evaluate across four axes: \textbf{Axis (i)} temporal covariate shift (TR/sampling rate); \textbf{Axis (ii)} low-resource transfer; \textbf{Axis (iii)} cross-domain shift (Weather-5K calendar, temporal-shift, and spatial-shift splits); and \textbf{Axis (iv)} brain-state shift (resting $\leftrightarrow$ task).
+We evaluate across four axes: \textbf{Axis (i)} temporal covariate shift (TR/sampling rate); \textbf{Axis (ii)} low-resource transfer; \textbf{Axis (iii)} brain-state shift (resting $\leftrightarrow$ task); and \textbf{Axis (iv)} cross-domain shift (Weather-5K calendar, temporal-shift, and spatial-shift splits).
 We quantify representation drift between conditions via a geometry-aware discrepancy $\mathcal{D}$ (CKA or distance correlation dCor):
 \begin{equation}
 \mathrm{Drift}(e,e') := \mathbb{E}_{x}\!\left[\mathcal{D}\!\left(z_e(x),\, z_{e'}(x)\right)\right],
@@ -277,7 +277,7 @@ Crucially, the target is not the stability of the raw parameters per se, but the
 The physics-informed multi-scale parameterization is designed to (i) constrain the model to a structured kernel family aligned with neural scaling, and (ii) reduce reconfiguration of the effective memory policy when acquisition conditions change.
 
 \paragraph{Extension to brain-state shifts.}
-While the kernel mismatch bound (Eq.~\eqref{eq:kernel_mismatch_bound}) is stated for acquisition-preserving shifts, the same mechanism applies to brain-state shifts (Axis iv): a transition from resting to task state alters the spectral composition of BOLD signals, changing the optimal effective kernel. A single-scale model trained on resting-state dynamics may exhibit large $\|g_{e'} - \tilde{g}\|_1$ when deployed on task-fMRI, inducing drift and degraded downstream decoding. A physics-informed multi-scale kernel family, by covering a broader spectral range, is structurally better positioned to remain stable across such generative regime changes.
+While the kernel mismatch bound (Eq.~\eqref{eq:kernel_mismatch_bound}) is stated for acquisition-preserving shifts, the same mechanism applies to brain-state shifts (Axis iii): a transition from resting to task state alters the spectral composition of BOLD signals, changing the optimal effective kernel. A single-scale model trained on resting-state dynamics may exhibit large $\|g_{e'} - \tilde{g}\|_1$ when deployed on task-fMRI, inducing drift and degraded downstream decoding. A physics-informed multi-scale kernel family, by covering a broader spectral range, is structurally better positioned to remain stable across such generative regime changes.
 
 \paragraph{Empirical correspondence.}
 In Section~\ref{sec:results}, we evaluate (i) in-distribution performance, (ii) performance under four axes of structured distribution shift, and (iii) representation drift metrics (CKA/dCor) to test whether reduced drift correlates with improved shift robustness, consistent with Eq.~\eqref{eq:chain_kernel_to_pred}.
@@ -359,7 +359,7 @@ All models are trained under a shared protocol with matched parameter budgets ac
 
 \section{Results}\label{sec:results}
 
-We evaluate PIMSM across four axes of structured distribution shift. Axes (i--ii) use HCP motor fMRI; axis (iii) uses Weather-5K; axis (iv) uses HCP resting-state$\to$task fMRI. All comparisons use parameter-matched baselines (Mamba2, Transformer, 1D-CNN; $\approx$7.85M parameters each). Results are averaged over three seeds.
+We evaluate PIMSM across four axes of structured distribution shift. Axes (i--ii) use HCP motor fMRI; axis (iii) uses HCP resting-state$\to$task fMRI; axis (iv) uses Weather-5K. All comparisons use parameter-matched baselines (Mamba2, Transformer, 1D-CNN; $\approx$7.85M parameters each). Results are averaged over three seeds.
 
 \subsection{Axis (i): Temporal Covariate Shift — HCP Motor TR Truncation}
 \label{sec:results:hcp_tr_shift}
@@ -462,7 +462,40 @@ PIMSM achieves the strongest performance in the extreme low-data regime (1\%).
 \label{tab:data_scarce}
 \end{table}
 
-\subsection{Axis (iii): Cross-Domain Shift — Weather-5K}
+\subsection{Axis (iii): Brain-State Shift --- Resting-State → Task Generalization}
+\label{sec:results:brainstateshift}
+
+We evaluate Axis (iii) brain-state generalization under the from-scratch state-shift protocol described in Section~\ref{sec:methods}: models are trained on HCP resting-state fMRI and evaluated on motor-task fMRI without any domain adaptation (see Methods for details).
+This setting tests whether physics-informed temporal kernels---derived from the resting-state spectral structure---remain informative when the generative regime shifts from spontaneous to task-evoked neural activity.
+
+Table~\ref{tab:brainstateshift} reports sex classification accuracy on the task-fMRI test split for PIMSM and parameter-matched baselines (three seeds each).
+PIMSM achieves the highest mean accuracy ($0.632\pm0.013$) while exhibiting markedly lower cross-seed variance than all baselines.
+Mamba2 ($0.591\pm0.038$), 1D-CNN ($0.589\pm0.040$), and Transformer ($0.554\pm0.063$) show variance $3$--$5\times$ larger than PIMSM, indicating that their representations reconfigure differently across random initializations when transferred across generative regimes.
+This consistency advantage---rather than raw accuracy alone---is the key empirical signature predicted by our kernel mismatch theory: a physics-informed multi-scale kernel family covers a broader spectral range, structurally reducing sensitivity to the resting$\leftrightarrow$task regime change (Section~\ref{sec:theory:multiscale}).
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lc}
+\toprule
+Model & Accuracy (mean$\pm$std) \\
+\midrule
+Mamba2      & $0.591\pm0.038$ \\
+1D-CNN      & $0.589\pm0.040$ \\
+Transformer & $0.554\pm0.063$ \\
+\midrule
+\textbf{PIMSM} & $\mathbf{0.632\pm0.013}$ \\
+\bottomrule
+\end{tabular}
+\caption{
+\textbf{Brain-state shift: resting-state training $\to$ motor-task test (Axis iii).}
+Models are trained on HCP resting-state fMRI and evaluated on motor-task fMRI without adaptation.
+PIMSM achieves the highest accuracy and $3$--$5\times$ lower cross-seed variance than single-scale baselines, consistent with the theoretical prediction that physics-informed multi-scale kernels reduce representational reconfiguration under generative regime shifts.
+}
+\label{tab:brainstateshift}
+\end{table}
+
+\subsection{Axis (iv): Cross-Domain Shift — Weather-5K}
 \label{sec:results:weather}
 
 We evaluate whether PIMSM's physics-informed multi-scale temporal structure---grounded in spectral power-law universality---transfers to meteorological dynamics without any domain-specific adaptation.
@@ -486,43 +519,10 @@ Transformer & -- & -- & -- & -- & -- & -- \\
 \bottomrule
 \end{tabular}
 \caption{
-\textbf{Weather-5K cross-domain forecasting (Axis iii).}
+\textbf{Weather-5K cross-domain forecasting (Axis iv).}
 PIMSM is applied without domain-specific adaptation; results to be filled upon experiment completion.
 }
 \label{tab:weather}
-\end{table}
-
-\subsection{Axis (iv): Brain-State Shift --- Resting-State → Task Generalization}
-\label{sec:results:brainstateshift}
-
-We evaluate Axis (iv) brain-state generalization under the from-scratch state-shift protocol described in Section~\ref{sec:methods}: models are trained on HCP resting-state fMRI and evaluated on motor-task fMRI without any domain adaptation (see Methods for details).
-This setting tests whether physics-informed temporal kernels---derived from the resting-state spectral structure---remain informative when the generative regime shifts from spontaneous to task-evoked neural activity.
-
-Table~\ref{tab:brainstateshift} reports sex classification accuracy on the task-fMRI test split for PIMSM and parameter-matched baselines (three seeds each).
-PIMSM achieves the highest mean accuracy ($0.632\pm0.013$) while exhibiting markedly lower cross-seed variance than all baselines.
-Mamba2 ($0.591\pm0.038$), 1D-CNN ($0.589\pm0.040$), and Transformer ($0.554\pm0.063$) show variance $3$--$5\times$ larger than PIMSM, indicating that their representations reconfigure differently across random initializations when transferred across generative regimes.
-This consistency advantage---rather than raw accuracy alone---is the key empirical signature predicted by our kernel mismatch theory: a physics-informed multi-scale kernel family covers a broader spectral range, structurally reducing sensitivity to the resting$\leftrightarrow$task regime change (Section~\ref{sec:theory:multiscale}).
-
-\begin{table}[htbp]
-\centering
-\small
-\begin{tabular}{lcc}
-\toprule
-Model & Mean accuracy & Std (3 seeds) \\
-\midrule
-Mamba2      & $0.591$ & $0.038$ \\
-1D-CNN      & $0.589$ & $0.040$ \\
-Transformer & $0.554$ & $0.063$ \\
-\midrule
-\textbf{PIMSM} & $\mathbf{0.632}$ & $\mathbf{0.013}$ \\
-\bottomrule
-\end{tabular}
-\caption{
-\textbf{Brain-state shift: resting-state training $\to$ motor-task test (Axis iv).}
-Models are trained on HCP resting-state fMRI and evaluated on motor-task fMRI without adaptation.
-PIMSM achieves the highest accuracy and $3$--$5\times$ lower cross-seed variance than single-scale baselines, consistent with the theoretical prediction that physics-informed multi-scale kernels reduce representational reconfiguration under generative regime shifts.
-}
-\label{tab:brainstateshift}
 \end{table}
 
 
@@ -555,7 +555,7 @@ PIMSM consistently outperforms parameter-matched single-scale baselines across t
 \section{Training Details}
 \label{sec:appx:training_details}
 
-All models are trained for 35 epochs using AdamW ($\mathrm{lr} = 10^{-3}$, weight decay $= 0.1$) with cosine annealing and linear warmup. Gradient norms are clipped to 1.0. Label smoothing ($\epsilon = 0.1$) is applied for classification. Batch size is 16 for the brain-state shift experiment (Axis iv) and 32 for motor decoding (Axes i--ii). All runs use three random seeds; we report mean $\pm$ standard deviation of test accuracy.
+All models are trained for 35 epochs using AdamW ($\mathrm{lr} = 10^{-3}$, weight decay $= 0.1$) with cosine annealing and linear warmup. Gradient norms are clipped to 1.0. Label smoothing ($\epsilon = 0.1$) is applied for classification. Batch size is 16 for the brain-state shift experiment (Axis iii) and 32 for motor decoding (Axes i--ii). All runs use three random seeds; we report mean $\pm$ standard deviation of test accuracy.
 
 The total training objective for PIMSM is:
 \begin{equation}
