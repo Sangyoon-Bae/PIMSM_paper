@@ -406,29 +406,7 @@ PIMSM achieves the highest accuracy and representation stability. Ablations (lea
 \end{table}
 
 \paragraph{Full TR $\rightarrow$ 3 TRs (moderate truncation).}
-Table~\ref{tab:drift3tr} shows consistent results under moderate truncation. PIMSM ($0.944\pm0.005$, CKA $0.854$) outperforms Mamba2 ($0.931$, CKA $0.786$) and Transformer ($0.927$, CKA $0.839$).
-
-\begin{table}[htbp]
-\centering
-\small
-\begin{tabular}{lcccc}
-\toprule
-Model & Full TRs & 3 TRs & CKA (Full$\leftrightarrow$3TR) & dCor (Full$\leftrightarrow$3TR) \\
-\midrule
-Mamba2 & $0.983\pm0.002$ & $0.931\pm0.010$ & $0.786\pm0.031$ & $0.817\pm0.025$ \\
-1DCNN & $0.978\pm0.007$ & $0.874\pm0.001$ & $0.585\pm0.008$ & $0.658\pm0.001$ \\
-Transformer & $0.982\pm0.006$ & $0.927\pm0.007$ & $0.839\pm0.019$ & $0.864\pm0.016$ \\
-PIMSM (learnable $\Delta$) & $0.982\pm0.001$ & $0.937\pm0.004$ & $0.865\pm0.006$ & $0.881\pm0.005$ \\
-PIMSM (random $\Delta$) & $0.983\pm0.004$ & $0.934\pm0.003$ & $0.846\pm0.026$ & $0.873\pm0.019$ \\
-\midrule
-\textbf{PIMSM} & $\mathbf{0.987\pm0.007}$ & $\mathbf{0.944\pm0.005}$ & $\mathbf{0.854\pm0.022}$ & $\mathbf{0.878\pm0.020}$ \\
-\bottomrule
-\end{tabular}
-\caption{
-\textbf{HCP motor decoding under moderate temporal truncation (Full TR $\rightarrow$ 3 TRs).}
-}
-\label{tab:drift3tr}
-\end{table}
+Under the milder Full TR $\rightarrow$ 3 TRs setting, PIMSM shows the same trend, achieving the best 3TR accuracy and stable representations among parameter-matched baselines (Appendix Table~\ref{tab:drift3tr}).
 
 \paragraph{Drift intervention and scaling.}
 Explicit drift regularization on Mamba2 improves stability without degrading ID performance, establishing drift as a causal lever; PIMSM achieves comparable stability through architecture alone (detailed tables and scaling figures in Appendix~\ref{sec:appx:hcp_tr_shift}).
@@ -678,7 +656,29 @@ The reconstruction loss is an $L_1$ loss over masked positions only:
 \section{HCP Motor Decoding under TR Shift: Additional Details}
 \label{sec:appx:hcp_tr_shift}
 
-This appendix provides supporting detail for Section~\ref{sec:results:hcp_tr_shift}. Main accuracy and CKA/dCor tables are reported in the main text (Tables~\ref{tab:drift2tr}--\ref{tab:drift3tr}). Here we include drift intervention tables, scaling figures, and Figure~\ref{fig:tr_shift_stability}.
+This appendix provides supporting detail for Section~\ref{sec:results:hcp_tr_shift}. The severe 2TR result is reported in the main text (Table~\ref{tab:drift2tr}); here we include the moderate 3TR table, drift intervention tables, scaling figures, and Figure~\ref{fig:tr_shift_stability}.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+Model & Full TRs & 3 TRs & CKA (Full$\leftrightarrow$3TR) & dCor (Full$\leftrightarrow$3TR) \\
+\midrule
+Mamba2 & $0.983\pm0.002$ & $0.931\pm0.010$ & $0.786\pm0.031$ & $0.817\pm0.025$ \\
+1DCNN & $0.978\pm0.007$ & $0.874\pm0.001$ & $0.585\pm0.008$ & $0.658\pm0.001$ \\
+Transformer & $0.982\pm0.006$ & $0.927\pm0.007$ & $0.839\pm0.019$ & $0.864\pm0.016$ \\
+PIMSM (learnable $\Delta$) & $0.982\pm0.001$ & $0.937\pm0.004$ & $0.865\pm0.006$ & $0.881\pm0.005$ \\
+PIMSM (random $\Delta$) & $0.983\pm0.004$ & $0.934\pm0.003$ & $0.846\pm0.026$ & $0.873\pm0.019$ \\
+\midrule
+\textbf{PIMSM} & $\mathbf{0.987\pm0.007}$ & $\mathbf{0.944\pm0.005}$ & $\mathbf{0.854\pm0.022}$ & $\mathbf{0.878\pm0.020}$ \\
+\bottomrule
+\end{tabular}
+\caption{
+\textbf{HCP motor decoding under moderate temporal truncation (Full TR $\rightarrow$ 3 TRs).}
+}
+\label{tab:drift3tr}
+\end{table}
 
 
 \paragraph{Drift intervention.}
