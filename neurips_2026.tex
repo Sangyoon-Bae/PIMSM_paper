@@ -129,22 +129,20 @@ Scientific deployment also makes distribution shift routine rather than exceptio
 
 We argue that these two failures are one mechanism: \textbf{temporal kernel mismatch}. A single or poorly anchored kernel can fit the average temporal statistics of an in-distribution split, but shift changes the relevant physical timescales and memory requirements. When the induced kernel no longer matches the signal, representations drift and transfer degrades. Robust scientific sequence modeling therefore requires physically anchored multi-scale temporal kernels.
 
-Following~\citet{bae2025spatiotemporal}, we represent neural power spectra with a piecewise power-law form,
+Multi-scale structure can be measured directly in the spectrum. We use a piecewise power-law form, also used in recent frequency-resolved fMRI modeling~\citep{bae2025spatiotemporal},
 \begin{equation}
 P(f) \propto f^{-\beta_k},
 \quad f \in [f_{k-1}, f_k],
 \quad k = 1, \dots, K,
 \label{eq:piecewise_powerlaw}
 \end{equation}
-where knee frequencies $f_k$ separate distinct temporal regimes. This implies that neural dynamics cannot be faithfully characterized by a single effective time constant. Instead, neural signals exhibit multi-scale temporal dependence, with distinct frequency bands carrying complementary biological information. Prior work further shows that these spectral regimes are associated with sex and psychiatric phenotypes across large-scale cohorts, supporting that such structure reflects intrinsic neural organization rather than scanner artifacts~\citep{bae2025spatiotemporal}. The spectrum therefore provides observable target timescales for a model; the question is whether the model's temporal parameters are actually anchored to them.
+where knee frequencies $f_k$ separate temporal regimes. These knees turn multi-scale dynamics into observable target timescales for a model, rather than a qualitative statement that the signal is ``complex.''
 
-This is where the mismatch becomes concrete for state-space models (SSMs). In Mamba-style selective SSMs, the discretization parameter $\Delta$ affects memory retention and rapid updating~\citep{gu2023mamba}, but it is not a physical sampling interval by itself: the induced temporal kernel depends jointly on $\Delta$ and the state transition $A$ (e.g., through $\exp(\Delta A)$), so changes in one can be compensated by the other. Consequently, a standard single-scale SSM can learn an effective kernel that works in distribution while lacking a stable physical reference for how that kernel should transform when TR, sampling rate, or domain statistics change.
+This is where the mismatch becomes concrete for state-space models (SSMs). In Mamba-style selective SSMs, $\Delta$ affects memory and update speed~\citep{gu2023mamba}, but it is not a physical sampling interval by itself: the induced kernel depends jointly on $\Delta$ and $A$ (e.g., through $\exp(\Delta A)$), so the two can compensate for each other. A standard single-scale SSM can therefore fit an in-distribution kernel while lacking a stable reference for how that kernel should transform under sampling or domain shift.
 
-These observations motivate a simple question: can the discretization parameter be reparameterized so that it reflects a physically meaningful time scale rather than an unconstrained gain? We address this by explicitly tying model timescales to both acquisition units and the intrinsic spectral structure of the signal. Instead of learning a single unconstrained discretization parameter, we infer a finite set of characteristic scales from spectrum-estimated knee frequencies and construct a hierarchy of acquisition-aligned temporal kernels. This enlarges the effective kernel family in a structured, biophysically grounded manner, reducing mismatch under structured shifts.
+Based on this principle, we introduce \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}. Its design philosophy is simple: replace a single unconstrained temporal kernel with a spectrum-guided hierarchy of kernels whose scales are anchored to acquisition time. Rather than treating multi-scale structure as an external preprocessing step, PIMSM embeds physical temporal hierarchy directly into the state-space dynamics.
 
-Based on this principle, we introduce \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}, a structured multi-scale state-space architecture that embeds spectrum-derived temporal hierarchy directly into a Mamba-style backbone. PIMSM first uses a lightweight SpectralHyperNet to estimate knee frequencies and scaling exponents from the empirical power spectrum. These estimates define scale-specific center frequencies, which are mapped to discretization parameters ${\Delta_k}$ through a monotonic frequency-to-timescale transformation. A temporal hierarchy constraint preserves consistency across scales, while both $\Delta$ and $A$ are jointly anchored to acquisition time units, substantially mitigating $\Delta$–$A$ scale non-identifiability. Scale-specific latent states are then fused through lightweight cross-scale attention, enabling interactions across temporal regimes without architectural branching. Unlike prior multi-scale Mamba variants that impose scale structure through duplicated modules or hand-designed decomposition, PIMSM embeds temporal hierarchy directly within the state-space dynamics itself.
-
-We evaluate PIMSM across four axes of structured distribution shift spanning neural and meteorological domains: temporal covariate shift and low-resource generalization on HCP motor fMRI, brain-state shift (resting-state $\to$ task fMRI), and cross-domain transfer to Weather-5K (ID, OOD-temporal, OOD-spatial) without adaptation. Across settings, PIMSM consistently improves robustness and representation stability over parameter-matched single-scale baselines.
+We evaluate PIMSM across four axes of structured distribution shift spanning neural and meteorological domains: temporal covariate shift and low-resource generalization on HCP motor fMRI, brain-state shift (resting-state $\to$ task fMRI), and cross-domain transfer to Weather-5K (calendar, temporal-shift, and spatial-shift splits) without adaptation. Across settings, PIMSM consistently improves robustness and representation stability over parameter-matched single-scale baselines.
 
 Our main contributions are as follows:
 
@@ -154,7 +152,7 @@ We identify temporal kernel mismatch under acquisition and brain-state shifts as
 \item \textbf{Physics-informed multi-scale temporal parameterization.}  
 We propose \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}, a structured multi-scale state-space architecture that derives scale-specific temporal kernels from spectrum-estimated knee frequencies and jointly anchors discretization and state dynamics to acquisition time units, mitigating $\Delta$--$A$ scale non-identifiability.
 \item \textbf{Multi-axis robustness evaluation across neural and physical systems.}
-We evaluate PIMSM across temporal covariate shift, low-resource transfer, brain-state shift, and cross-domain forecasting (Weather-5K: ID, OOD-temporal, OOD-spatial), showing that physics-informed multi-scale temporal structure consistently improves robustness and representation stability over parameter-matched single-scale baselines without shift-specific adaptation.
+We evaluate PIMSM across temporal covariate shift, low-resource transfer, brain-state shift, and cross-domain forecasting (Weather-5K: calendar, temporal-shift, and spatial-shift splits), showing that physics-informed multi-scale temporal structure consistently improves robustness and representation stability over parameter-matched single-scale baselines without shift-specific adaptation.
 \end{itemize}
 
 
@@ -167,7 +165,7 @@ Such shifts are practically important because TR-level resolution affects fMRI d
 
 Let $e \in \mathcal{E}$ index an acquisition or domain condition (fMRI TR, EEG sampling rate, brain state, meteorological station regime, etc.).
 A shift $e \to e'$ alters the effective temporal statistics of the observed signal $x_{1:T} \in \mathbb{R}^d$ while preserving the downstream task definition.
-We evaluate across four levels: \textbf{(L1)} temporal covariate shift (TR/sampling rate); \textbf{(L2)} brain-state shift (resting $\leftrightarrow$ task); \textbf{(L3)} low-resource transfer; and \textbf{(L4)} cross-domain shift (Weather-5K ID/OOD-temporal/OOD-spatial).
+We evaluate across four levels: \textbf{(L1)} temporal covariate shift (TR/sampling rate); \textbf{(L2)} brain-state shift (resting $\leftrightarrow$ task); \textbf{(L3)} low-resource transfer; and \textbf{(L4)} cross-domain shift (Weather-5K calendar, temporal-shift, and spatial-shift splits).
 We quantify representation drift between conditions via a geometry-aware discrepancy $\mathcal{D}$ (CKA or distance correlation dCor):
 \begin{equation}
 \mathrm{Drift}(e,e') := \mathbb{E}_{x}\!\left[\mathcal{D}\!\left(z_e(x),\, z_{e'}(x)\right)\right],
@@ -318,7 +316,7 @@ PIMSM (Physics-Informed Multi-Scale Mamba) is designed to explicitly integrate t
 Full dataset details and preprocessing are in Appendix~\ref{sec:appx:data}.
 \textbf{HCP motor fMRI} (360 cortical ROIs, TR$=0.72$\,s, 5 motor conditions): primary benchmark for temporal shift (TR truncation to 2/3 TRs) and low-resource transfer (1–100\% labels).
 \textbf{HCP resting-state fMRI}: models trained on rest (284 TRs) and evaluated on motor-task fMRI without adaptation (brain-state shift).
-\textbf{Weather-5K}~\citep{han2024far}: 5,000 global weather stations; evaluated under three splits---\textbf{ID} (calendar split), \textbf{OOD-temporal} (temporal shift), and \textbf{OOD-spatial} (held-out stations)---applied without any domain-specific adaptation, testing whether spectral multiscale structure generalizes to independently-arising physical dynamics.
+\textbf{Weather-5K}~\citep{han2024far}: 5,000 global weather stations; evaluated under three splits---\textbf{calendar}, \textbf{temporal shift}, and \textbf{spatial shift} (held-out stations)---applied without any domain-specific adaptation, testing whether spectral multiscale structure generalizes to independently-arising physical dynamics.
 
 \subsection{SpectralHyperNet: Spectrum-Guided Scale Inference}
 
@@ -475,7 +473,7 @@ PIMSM achieves the strongest performance in the extreme low-data regime (1\%).
 \label{sec:results:weather}
 
 We evaluate whether PIMSM's physics-informed multi-scale temporal structure---grounded in spectral power-law universality---transfers to meteorological dynamics without any domain-specific adaptation.
-Weather-5K is evaluated under three splits: \textbf{ID} (calendar split), \textbf{OOD-temporal} (temporal shift), and \textbf{OOD-spatial} (held-out weather stations).
+Weather-5K is evaluated under three splits: \textbf{calendar}, \textbf{temporal shift}, and \textbf{spatial shift} (held-out weather stations).
 Table~\ref{tab:weather} reports forecasting MSE/MAE across splits for PIMSM and parameter-matched baselines.
 
 \begin{table}[htbp]
@@ -483,7 +481,7 @@ Table~\ref{tab:weather} reports forecasting MSE/MAE across splits for PIMSM and 
 \small
 \begin{tabular}{lcccccc}
 \toprule
- & \multicolumn{2}{c}{\textbf{ID (Calendar)}} & \multicolumn{2}{c}{\textbf{OOD-Temporal}} & \multicolumn{2}{c}{\textbf{OOD-Spatial}} \\
+ & \multicolumn{2}{c}{\textbf{Calendar}} & \multicolumn{2}{c}{\textbf{Temporal Shift}} & \multicolumn{2}{c}{\textbf{Spatial Shift}} \\
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
 Model & MSE & MAE & MSE & MAE & MSE & MAE \\
 \midrule
@@ -555,7 +553,7 @@ PIMSM instead encodes temporal hierarchy directly within the state-space dynamic
 
 We introduced \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}, motivated by the hypothesis that \emph{temporal kernel mismatch is a central source of generalization failure in sequence models for multiscale physical signals}. By coupling discretization parameters to spectrum-derived knee frequencies and jointly anchoring both $\Delta$ and $A$ in acquisition time units, PIMSM constructs a structured multi-scale kernel family that reduces mismatch under acquisition, brain-state, and cross-domain shifts---without shift-specific adaptation.
 
-PIMSM consistently outperforms parameter-matched single-scale baselines across temporal covariate shift, low-resource transfer, brain-state shift, and cross-domain forecasting (Weather-5K ID/OOD-temporal/OOD-spatial). These results suggest that robust sequence modeling of multiscale physical signals requires architectural alignment with the intrinsic temporal organization of the underlying dynamical system---a property shared across neural and meteorological domains by their common piecewise power-law spectral structure.
+PIMSM consistently outperforms parameter-matched single-scale baselines across temporal covariate shift, low-resource transfer, brain-state shift, and cross-domain forecasting (Weather-5K calendar, temporal-shift, and spatial-shift splits). These results suggest that robust sequence modeling of multiscale physical signals requires architectural alignment with the intrinsic temporal organization of the underlying dynamical system---a property shared across neural and meteorological domains by their common piecewise power-law spectral structure.
 
 
 \newpage
@@ -764,7 +762,7 @@ Mamba2 and Transformer concentrate near $\alpha \approx 2$, suggesting that most
 \includegraphics[width=0.85\linewidth]{figures/weightwatcher_motor_2TR.png}
 \caption{
 \textbf{WeightWatcher layer-wise $\alpha$ distributions under 2 TR early-window condition (extreme temporal truncation).}
-Under the 2 TR OOD condition---an extreme data-scarce scenario in which only two time points are available per trial---PIMSM maintains a wide $\alpha$ spread (1.75--5.29), indicating that layer-wise representational diversity is preserved despite the severely reduced input.
+Under the 2 TR condition---an extreme data-scarce scenario in which only two time points are available per trial---PIMSM maintains a wide $\alpha$ spread (1.75--5.29), indicating that layer-wise representational diversity is preserved despite the severely reduced input.
 In contrast, Mamba2 collapses even more uniformly to $\alpha \approx 2$ (all 37 analyzable layers saturate simultaneously), suggesting that the absence of multi-scale inductive bias leads to representation homogenization when learning signals are scarce.
 The Transformer retains a similar distribution to its Full TR counterpart but with reduced variance.
 }
@@ -790,7 +788,7 @@ The Transformer shows moderate variance reduction but remains closer to its Full
 \paragraph{Interpretation.}
 These layer-wise spectral analyses provide weight-level corroboration for the conclusion drawn from CKA and distance correlation measurements:
 PIMSM's multi-scale structure actively resists representation collapse when temporal context is severely reduced.
-The preserved heterogeneity of $\alpha$ values across layers suggests that the physics-informed multi-scale parameterization functions as an implicit regularizer that prevents the entire model from collapsing to a single dominant feature regime under OOD conditions.
+The preserved heterogeneity of $\alpha$ values across layers suggests that the physics-informed multi-scale parameterization functions as an implicit regularizer that prevents the entire model from collapsing to a single dominant feature regime under severe temporal truncation.
 
 
 \section{Effect of Pretraining: Finetuning and Linear Probing}
@@ -816,13 +814,13 @@ Mamba2 & $0.983 \pm 0.002$ & $0.987 \pm 0.007$ & $0.944 \pm 0.006$ & $0.874 \pm 
 \caption{
 Effect of self-supervised pretraining on resting-state fMRI followed by finetuning on HCP motor task fMRI.
 Representation similarity (CKA, dCor) is measured between Full TR and temporally downsampled inputs.
-Pretraining consistently improves OOD robustness for both models, with PIMSM retaining a small but consistent advantage in representation stability.
+Pretraining consistently improves shift robustness for both models, with PIMSM retaining a small but consistent advantage in representation stability.
 }
 \label{tab:pretrain_finetune}
 \end{table}
 
-We evaluate whether self-supervised pretraining on resting-state fMRI improves downstream OOD robustness when models are subsequently finetuned on motor task fMRI (Table~\ref{tab:pretrain_finetune}).
-Pretraining consistently raises OOD accuracy and representation similarity relative to training from scratch for both PIMSM and Mamba2.
+We evaluate whether self-supervised pretraining on resting-state fMRI improves downstream shift robustness when models are subsequently finetuned on motor task fMRI (Table~\ref{tab:pretrain_finetune}).
+Pretraining consistently raises shifted-condition accuracy and representation similarity relative to training from scratch for both PIMSM and Mamba2.
 Under the 2 TR condition, pretrained PIMSM achieves $0.937 \pm 0.009$ versus $0.933 \pm 0.011$ for pretrained Mamba2; pretrained PIMSM also retains higher CKA ($0.867 \pm 0.004$) and dCor ($0.889 \pm 0.009$).
 Under the 3 TR condition, pretrained PIMSM reaches $0.949 \pm 0.012$ versus $0.944 \pm 0.006$ for Mamba2.
 These margins are consistent but modest, suggesting that the primary benefit of pretraining lies in improving representation stability under shift rather than raising the absolute performance ceiling.
@@ -848,13 +846,13 @@ Mamba2 & $0.983 \pm 0.002$ & $\mathbf{0.936 \pm 0.015}$ & $0.767 \pm 0.023$ & $\
 Linear probing evaluation of pretrained models on HCP motor task fMRI.
 The backbone is frozen and only a linear classifier is trained.
 CKA and dCor are measured between Full TR and downsampled representations of the frozen backbone.
-Both models achieve comparable Full TR accuracy ($\approx 0.93$), but PIMSM maintains slightly higher OOD accuracy under 2 TR and 3 TR conditions.
+Both models achieve comparable Full TR accuracy ($\approx 0.93$), but PIMSM maintains slightly higher shifted-condition accuracy under 2 TR and 3 TR conditions.
 }
 \label{tab:linear_probe}
 \end{table}
 
 Under strict linear probing, both PIMSM and Mamba2 achieve similar Full TR accuracy ($\approx 0.93$).
-OOD accuracy drops substantially for both models relative to the finetuning setting (Table~\ref{tab:pretrain_finetune}), reflecting the difficulty of adapting frozen representations to temporal-resolution shift via a linear readout alone.
+Shifted-condition accuracy drops substantially for both models relative to the finetuning setting (Table~\ref{tab:pretrain_finetune}), reflecting the difficulty of adapting frozen representations to temporal-resolution shift via a linear readout alone.
 PIMSM maintains a consistent advantage: $0.748 \pm 0.003$ vs.\ $0.730 \pm 0.015$ at 2 TR, and $0.791 \pm 0.027$ vs.\ $0.767 \pm 0.023$ at 3 TR.
 CKA values under the frozen setting are substantially lower than under finetuning, suggesting that the full representational benefit of physics-informed pretraining is realized during downstream adaptation rather than through passively linearly separable representations.
 These results are consistent with the view that multi-scale temporal modeling improves the plasticity of learned features during finetuning rather than directly encoding task geometry.
@@ -1029,7 +1027,7 @@ Models trained on resting-state fMRI (truncated to 284 TRs) for sex classificati
 \paragraph{Weather-5K.}
 Large-scale meteorological benchmark~\citep{han2024far} spanning 5,000 global weather stations.
 PIMSM is applied without domain-specific adaptation, using the same architecture and physics-informed inductive biases as for fMRI.
-Three evaluation splits: \textbf{ID} (calendar split), \textbf{OOD-temporal} (temporal distribution shift), \textbf{OOD-spatial} (held-out weather stations not seen during training).
+Three evaluation splits: \textbf{calendar}, \textbf{temporal shift}, and \textbf{spatial shift} (held-out weather stations not seen during training).
 
 \section{Formal Problem Setup}
 \label{sec:appx:problem_setup}
