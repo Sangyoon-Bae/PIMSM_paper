@@ -438,6 +438,7 @@ PIMSM achieves the strongest performance in the extreme low-data regime (1\%).
 \label{sec:results:brainstateshift}
 
 We train on HCP resting-state fMRI and evaluate on motor-task fMRI without adaptation, testing whether temporal kernels learned from spontaneous dynamics remain useful under task-evoked dynamics.
+We do not report CKA/dCor for Axis (iii) because resting-state and task-fMRI are not paired observations of the same input under two temporal conditions; cross-condition similarity would conflate representation stability with differences in behavioral state and sequence content.
 PIMSM achieves the highest accuracy and substantially lower cross-seed variance (Table~\ref{tab:brainstateshift}), suggesting that the multi-scale kernel family reduces sensitivity to resting$\leftrightarrow$task reconfiguration rather than merely improving the mean score.
 
 \begin{table}[htbp]
