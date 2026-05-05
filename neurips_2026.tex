@@ -111,7 +111,7 @@
 
 
 \begin{abstract}
-Many natural dynamical systems---from neural circuits to atmospheric processes---operate through interacting processes across multiple timescales and exhibit piecewise power-law spectral structure, spanning fast local fluctuations to slow global regulation. Yet dominant sequence models are single-scale, becoming structurally mismatched to a signal’s temporal statistics under distribution shift. We argue that time-series generalization is fundamentally limited by \emph{temporal kernel mismatch}: when acquisition or domain conditions change, single-scale models incur representation drift and degraded transfer. To address this, we propose \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}, a state-space architecture that derives scale-specific discretization parameters from spectrum-estimated knee frequencies and anchors them to acquisition time units, constructing a hierarchy of temporal kernels grounded in empirical spectral scaling laws. Evaluated on neural time series (fMRI; Human Connectome Project) and meteorological data (Weather-5K), PIMSM consistently improves robustness and representation stability over parameter-matched single-scale baselines across temporal covariate shift, low-resource transfer, brain-state shift, and cross-domain forecasting---without shift-specific adaptation. These results suggest that generalizable sequence modeling of multiscale physical signals requires architectural alignment with the intrinsic temporal organization of the underlying dynamical system.
+Many natural dynamical systems---from neural circuits to atmospheric processes---operate through interacting processes across multiple timescales and exhibit piecewise power-law spectral structure, spanning fast local fluctuations to slow global regulation. Yet dominant sequence models are single-scale, becoming structurally mismatched to a signal's temporal statistics under distribution shift. We argue that time-series generalization is limited by \emph{temporal kernel mismatch}: when acquisition or domain conditions change, single-scale models can incur representation drift and degraded transfer. To address this, we propose \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}, a state-space architecture that derives scale-specific discretization parameters from spectrum-estimated knee frequencies and anchors them to acquisition time units, constructing a hierarchy of temporal kernels grounded in empirical spectral scaling laws. On Human Connectome Project fMRI, PIMSM improves robustness and representation stability over parameter-matched baselines under severe temporal-context truncation, extreme low-resource transfer, and resting-state to task-state generalization. We further evaluate whether the same spectrum-guided temporal parameterization transfers to Weather-5K forecasting without domain-specific adaptation. These results suggest that generalizable sequence modeling of multiscale physical signals benefits from architectural alignment with the intrinsic temporal organization of the underlying dynamical system.
 \end{abstract}
 
 \section{Introduction}
@@ -136,7 +136,7 @@ This is where the mismatch becomes concrete for state-space models (SSMs). In Ma
 
 Based on this principle, we introduce \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}. Its design philosophy is simple: replace a single unconstrained temporal kernel with a spectrum-guided hierarchy of kernels whose scales are anchored to acquisition time. Rather than treating multi-scale structure as an external preprocessing step, PIMSM embeds physical temporal hierarchy directly into the state-space dynamics.
 
-We evaluate PIMSM across four axes of structured distribution shift spanning neural and meteorological domains: temporal covariate shift and low-resource generalization on HCP motor fMRI, brain-state shift (resting-state $\to$ task fMRI), and cross-domain transfer to Weather-5K (calendar, temporal-shift, and spatial-shift splits) without adaptation. Across settings, PIMSM consistently improves robustness and representation stability over parameter-matched single-scale baselines.
+We evaluate PIMSM across four axes of structured distribution shift spanning neural and meteorological domains: temporal-context truncation and low-resource generalization on HCP motor fMRI, brain-state shift (resting-state $\to$ task fMRI), and cross-domain transfer to Weather-5K (calendar, temporal-shift, and spatial-shift splits) without adaptation. On the completed HCP evaluations, PIMSM improves robustness and representation stability over parameter-matched single-scale baselines.
 
 Our main contributions are as follows:
 
@@ -146,7 +146,7 @@ We identify temporal kernel mismatch under acquisition and brain-state shifts as
 \item \textbf{Physics-informed multi-scale temporal parameterization.}  
 We propose \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}, a structured multi-scale state-space architecture that derives scale-specific temporal kernels from spectrum-estimated knee frequencies and jointly anchors discretization and state dynamics to acquisition time units, mitigating $\Delta$--$A$ scale non-identifiability.
 \item \textbf{Multi-axis robustness evaluation across neural and physical systems.}
-We evaluate PIMSM across temporal covariate shift, low-resource transfer, brain-state shift, and cross-domain forecasting (Weather-5K: calendar, temporal-shift, and spatial-shift splits), showing that physics-informed multi-scale temporal structure consistently improves robustness and representation stability over parameter-matched single-scale baselines without shift-specific adaptation.
+We evaluate PIMSM across temporal-context truncation, low-resource transfer, brain-state shift, and cross-domain forecasting (Weather-5K: calendar, temporal-shift, and spatial-shift splits), showing on completed HCP experiments that physics-informed multi-scale temporal structure improves robustness and representation stability over parameter-matched single-scale baselines without shift-specific adaptation.
 \end{itemize}
 
 
@@ -159,7 +159,7 @@ Such shifts are practically important because TR-level resolution affects fMRI d
 
 Let $e \in \mathcal{E}$ index an acquisition or domain condition (fMRI TR, brain state, scanner/site, meteorological station regime, etc.).
 A shift $e \to e'$ alters the effective temporal statistics of the observed signal $x_{1:T} \in \mathbb{R}^d$ while preserving the downstream task definition.
-We evaluate across four axes: \textbf{Axis (i)} temporal covariate shift (TR/sampling rate); \textbf{Axis (ii)} low-resource transfer; \textbf{Axis (iii)} brain-state shift (resting $\leftrightarrow$ task); and \textbf{Axis (iv)} cross-domain shift (Weather-5K calendar, temporal-shift, and spatial-shift splits).
+We evaluate across four axes: \textbf{Axis (i)} temporal-context shift, implemented as early-window truncation of task trials while retaining full-sequence spectral calibration; \textbf{Axis (ii)} low-resource transfer; \textbf{Axis (iii)} brain-state shift (resting $\leftrightarrow$ task); and \textbf{Axis (iv)} cross-domain shift (Weather-5K calendar, temporal-shift, and spatial-shift splits).
 We quantify representation drift between conditions via a geometry-aware discrepancy $\mathcal{D}$ (CKA or distance correlation dCor):
 \begin{equation}
 \mathrm{Drift}(e,e') := \mathbb{E}_{x}\!\left[\mathcal{D}\!\left(z_e(x),\, z_{e'}(x)\right)\right],
@@ -308,22 +308,22 @@ PIMSM (Physics-Informed Multi-Scale Mamba) is designed to explicitly integrate t
 \label{sec:methods:data}
 
 Full dataset details and preprocessing are in Appendix~\ref{sec:appx:data}.
-\textbf{HCP motor fMRI} (360 cortical ROIs, TR$=0.72$\,s, 5 motor conditions): primary benchmark for temporal shift (TR truncation to 2/3 TRs) and low-resource transfer (1–100\% labels).
+\textbf{HCP motor fMRI} (360 cortical ROIs, TR$=0.72$\,s, 5 motor conditions): primary benchmark for temporal-context truncation (backbone input restricted to the first 2/3 TRs of each trial) and low-resource transfer (1--100\% labels).
 \textbf{HCP resting-state fMRI}: models trained on rest (284 TRs) and evaluated on motor-task fMRI without adaptation (brain-state shift).
-\textbf{Weather-5K}~\citep{han2024far}: 5,000 global weather stations; evaluated under three splits---\textbf{calendar}, \textbf{temporal shift}, and \textbf{spatial shift} (held-out stations)---applied without any domain-specific adaptation, testing whether spectral multiscale structure generalizes to independently-arising physical dynamics.
+\textbf{Weather-5K}~\citep{han2024far}: 5,000 global weather stations; planned cross-domain benchmark under three splits---\textbf{calendar}, \textbf{temporal shift}, and \textbf{spatial shift} (held-out stations)---to test whether spectral multiscale structure generalizes to independently-arising physical dynamics without domain-specific adaptation.
 
 \subsection{SpectralHyperNet: Spectrum-Guided Scale Inference}
 
 Following~\citet{bae2025spatiotemporal}, we model the BOLD power spectral density as a piecewise power-law across $K=3$ frequency regimes (ultra-low, low, high), separated by knee frequencies $(f_1, f_2)$.
 We empirically verify this piecewise structure across datasets and domains in Appendix~\ref{sec:appx:psd_multifractal}.
 
-\textbf{Spectral modeling.} Neural signals are known to exhibit piecewise power-law spectra. Given the full task run, we estimate the power spectral density $P(f)$ via FFT. We assume a multi-scale power-law structure:
+\textbf{Spectral modeling.} Neural signals are known to exhibit piecewise power-law spectra. Given the full sequence, we estimate the power spectral density $P(f)$ via FFT. In HCP motor experiments, this means SpectralHyperNet receives the full trial sequence for spectral calibration, while the temporal-context truncation experiment restricts the SSM backbone input to the first 3 or 2 TRs. Thus Axis (i) tests whether a full-sequence estimate of the signal's spectral hierarchy can stabilize representations when the task evidence available to the sequence backbone is severely shortened; it is not intended to simulate a changed scanner TR. We assume a multi-scale power-law structure:
 \begin{equation}
 P(f) \propto f^{-\beta_k}, \quad f \in [f_{k-1}, f_k], \quad k = 1, 2, 3,
 \end{equation}
 where $(f_1, f_2)$ are knee frequencies separating three frequency regimes.
 
-\textbf{Knee estimation.} A lightweight neural network (SpectralHyperNet) predicts $(f_1, f_2)$ and scaling exponents $(\beta_1, \beta_2, \beta_3)$ directly from the full-run power spectrum via FFT.
+\textbf{Knee estimation.} A lightweight neural network (SpectralHyperNet) predicts $(f_1, f_2)$ and scaling exponents $(\beta_1, \beta_2, \beta_3)$ directly from the full-sequence power spectrum via FFT.
 The network is initialized from a data-driven scipy fit on the first training batch to avoid poor local minima; a learnable per-sample bias enables sample-specific adaptation.
 A multi-resolution MAE spectral fit loss drives knee placement; piecewise continuity across regime boundaries is encouraged by a seam loss.
 Hyperparameter details (loss weights, exponent constraints) are in Appendix~\ref{sec:appx:training_details}.
@@ -353,27 +353,28 @@ All models are trained under a shared protocol with matched parameter budgets ac
 
 \section{Results}\label{sec:results}
 
-We evaluate PIMSM across four axes of structured distribution shift. Axes (i--ii) use HCP motor fMRI; axis (iii) uses HCP resting-state$\to$task fMRI; axis (iv) uses Weather-5K. All comparisons use parameter-matched baselines (Mamba2, Transformer, 1D-CNN; $\approx$7.85M parameters each). Results are averaged over three seeds.
+We evaluate PIMSM across four axes of structured distribution shift. Axes (i--ii) use HCP motor fMRI; axis (iii) uses HCP resting-state$\to$task fMRI; axis (iv) uses Weather-5K. All completed comparisons use parameter-matched baselines (Mamba2, Transformer, 1D-CNN; $\approx$7.85M parameters each). Results are averaged over three seeds.
 
-\subsection{Axis (i): Temporal Covariate Shift — HCP Motor TR Truncation}
+\subsection{Axis (i): Temporal-Context Shift --- HCP Motor Early-Window Truncation}
 \label{sec:results:hcp_tr_shift}
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{figures/PIMSM_Fig2.pdf}
 \caption{
-\textbf{Representation stability under TR shift (HCP motor task fMRI).}
-\textbf{(a)} Relationship between representation similarity (CKA; Full TRs vs reduced TRs) and performance drop (Full TR $\rightarrow$ 2TR / 3TR).
-\textbf{(b)} PCA visualization of latent embeddings under Full TR, 3TR, and 2TR.
-\textbf{(c)} Mean $\ell_2$ latent drift between Full TR and reduced TR conditions.
+\textbf{Representation stability under temporal-context truncation (HCP motor task fMRI).}
+\textbf{(a)} Relationship between representation similarity (CKA; full trial vs early-window inputs) and performance drop (full trial $\rightarrow$ 2TR / 3TR).
+\textbf{(b)} PCA visualization of latent embeddings under full-trial, 3TR, and 2TR inputs.
+\textbf{(c)} Mean $\ell_2$ latent drift between full-trial and early-window conditions.
 }
 \label{fig:tr_shift_stability}
 \end{figure}
 
-We assess robustness to temporal covariate shift by truncating each motor trial to the first 3 or 2 TRs, simulating reduced temporal context while preserving task labels and subject identity.
-Figure~\ref{fig:tr_shift_stability} reports representation stability (CKA, distance correlation dCor between Full-TR and truncated representations) alongside decoding accuracy.
+We assess robustness to temporal-context shift by truncating the SSM backbone input for each motor trial to the first 3 or 2 TRs, simulating severe early-window decoding while preserving task labels and subject identity.
+SpectralHyperNet still receives the full trial sequence to estimate the spectral hierarchy used for scale calibration; therefore this experiment isolates whether full-sequence spectral structure can stabilize representations when downstream task evidence is temporally shortened, rather than simulating a changed scanner TR.
+Figure~\ref{fig:tr_shift_stability} reports representation stability (CKA, distance correlation dCor between full-trial and truncated-input representations) alongside decoding accuracy.
 
-\paragraph{Full TR $\rightarrow$ 2 TRs (severe truncation).}
+\paragraph{Full trial $\rightarrow$ 2 TRs (severe truncation).}
 Table~\ref{tab:drift2tr} shows that PIMSM maintains the highest accuracy ($0.933\pm0.016$) and representation stability (CKA $0.812$, dCor $0.846$) under severe truncation, compared with Mamba2 (accuracy $0.914$, CKA $0.733$), Transformer ($0.884$, CKA $0.783$), and 1D-CNN ($0.847$, CKA $0.559$). PIMSM ablations (learnable or random $\Delta$) do not recover the same stability, confirming that physics-informed scale parameters---not multi-scale capacity alone---drive robustness.
 
 \begin{table}[htbp]
@@ -381,7 +382,7 @@ Table~\ref{tab:drift2tr} shows that PIMSM maintains the highest accuracy ($0.933
 \small
 \begin{tabular}{lcccc}
 \toprule
-Model & Full TRs & 2 TRs & CKA (Full$\leftrightarrow$2TR) & dCor (Full$\leftrightarrow$2TR) \\
+Model & Full trial & 2 TRs & CKA (Full trial$\leftrightarrow$2TR) & dCor (Full trial$\leftrightarrow$2TR) \\
 \midrule
 Mamba2 & $0.983\pm0.002$ & $0.914\pm0.005$ & $0.733\pm0.018$ & $0.770\pm0.011$ \\
 1DCNN & $0.978\pm0.007$ & $0.847\pm0.009$ & $0.559\pm0.020$ & $0.622\pm0.012$ \\
@@ -393,14 +394,14 @@ PIMSM (random $\Delta$) & $0.983\pm0.004$ & $0.889\pm0.055$ & $0.737\pm0.105$ & 
 \bottomrule
 \end{tabular}
 \caption{
-\textbf{HCP motor decoding under severe temporal truncation (Full TR $\rightarrow$ 2 TRs).}
+\textbf{HCP motor decoding under severe temporal-context truncation (full trial $\rightarrow$ 2 TRs).}
 PIMSM achieves the highest accuracy and representation stability. Ablations (learnable/random $\Delta$) confirm that physics-informed scale parameters are necessary.
 }
 \label{tab:drift2tr}
 \end{table}
 
-\paragraph{Full TR $\rightarrow$ 3 TRs (moderate truncation).}
-Under the milder Full TR $\rightarrow$ 3 TRs setting, PIMSM shows the same trend, achieving the best 3TR accuracy and stable representations among parameter-matched baselines (Appendix Table~\ref{tab:drift3tr}).
+\paragraph{Full trial $\rightarrow$ 3 TRs (moderate truncation).}
+Under the milder full-trial $\rightarrow$ 3 TRs setting, PIMSM shows the same trend, achieving the best 3TR accuracy and stable representations among parameter-matched baselines (Appendix Table~\ref{tab:drift3tr}).
 
 \paragraph{Drift intervention and scaling.}
 Explicit drift regularization on Mamba2 improves stability without degrading ID performance, establishing drift as a causal lever; PIMSM achieves comparable stability through architecture alone (detailed tables and scaling figures in Appendix~\ref{sec:appx:hcp_tr_shift}).
@@ -437,7 +438,7 @@ PIMSM achieves the strongest performance in the extreme low-data regime (1\%).
 \subsection{Axis (iii): Brain-State Shift --- Resting-State → Task Generalization}
 \label{sec:results:brainstateshift}
 
-We train on HCP resting-state fMRI and evaluate on motor-task fMRI without adaptation, testing whether temporal kernels learned from spontaneous dynamics remain useful under task-evoked dynamics.
+We train on HCP resting-state fMRI for sex classification and evaluate the same task label on motor-task fMRI without adaptation, testing whether temporal kernels learned from spontaneous dynamics remain useful under task-evoked acquisition state.
 We do not report CKA/dCor for Axis (iii) because resting-state and task-fMRI are not paired observations of the same input under two temporal conditions; cross-condition similarity would conflate representation stability with differences in behavioral state and sequence content.
 PIMSM achieves the highest accuracy and substantially lower cross-seed variance (Table~\ref{tab:brainstateshift}), suggesting that the multi-scale kernel family reduces sensitivity to resting$\leftrightarrow$task reconfiguration rather than merely improving the mean score.
 
@@ -457,7 +458,7 @@ Transformer & $0.554\pm0.063$ \\
 \end{tabular}
 \caption{
 \textbf{Brain-state shift: resting-state training $\to$ motor-task test (Axis iii).}
-Models are trained on HCP resting-state fMRI and evaluated on motor-task fMRI without adaptation.
+Models are trained for sex classification on HCP resting-state fMRI and evaluated on HCP motor-task fMRI without adaptation.
 PIMSM achieves the highest accuracy and $3$--$5\times$ lower cross-seed variance than single-scale baselines, consistent with the theoretical prediction that physics-informed multi-scale kernels reduce representational reconfiguration under generative regime shifts.
 }
 \label{tab:brainstateshift}
@@ -466,9 +467,9 @@ PIMSM achieves the highest accuracy and $3$--$5\times$ lower cross-seed variance
 \subsection{Axis (iv): Cross-Domain Shift — Weather-5K}
 \label{sec:results:weather}
 
-We evaluate whether PIMSM's physics-informed multi-scale temporal structure---grounded in spectral power-law universality---transfers to meteorological dynamics without any domain-specific adaptation.
+We evaluate whether PIMSM's physics-informed multi-scale temporal structure---grounded in empirical spectral scaling across domains---transfers to meteorological dynamics without any domain-specific adaptation.
 Weather-5K includes heterogeneous targets with different physical units, so aggregate forecasting error can obscure which variables benefit from multi-scale temporal modeling.
-We therefore report variable-wise MAE for temperature, sea-level pressure, dew point, wind rate, and wind angle components (Table~\ref{tab:weather}); the benchmark is evaluated under calendar, temporal-shift, and spatial-shift splits.
+Table~\ref{tab:weather} reserves entries for variable-wise MAE on temperature, sea-level pressure, dew point, wind rate, and wind angle components; the benchmark is evaluated under calendar, temporal-shift, and spatial-shift splits.
 
 \begin{table}[htbp]
 \centering
@@ -486,7 +487,7 @@ Transformer & -- & -- & -- & -- & -- & -- \\
 \end{tabular}
 \caption{
 \textbf{Weather-5K cross-domain forecasting (Axis iv).}
-Variable-wise MAE is reported for temperature (TMP), sea-level pressure (SLP), dew point (DEW), wind rate, and wind angle components (cos/sin). PIMSM is applied without domain-specific adaptation; results to be filled upon experiment completion.
+Variable-wise MAE is reported for temperature (TMP), sea-level pressure (SLP), dew point (DEW), wind rate, and wind angle components (cos/sin). PIMSM is applied without domain-specific adaptation; entries are pending completion of the Weather-5K experiment.
 }
 \label{tab:weather}
 \end{table}
@@ -510,9 +511,9 @@ PIMSM instead encodes temporal hierarchy directly within the state-space dynamic
 \section{Conclusion}
 \label{sec:conclusion}
 
-We introduced \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}, motivated by the hypothesis that \emph{temporal kernel mismatch is a central source of generalization failure in sequence models for multiscale physical signals}. By coupling discretization parameters to spectrum-derived knee frequencies and jointly anchoring both $\Delta$ and $A$ in acquisition time units, PIMSM constructs a structured multi-scale kernel family that reduces mismatch under acquisition, brain-state, and cross-domain shifts---without shift-specific adaptation.
+We introduced \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}, motivated by the hypothesis that \emph{temporal kernel mismatch is a central source of generalization failure in sequence models for multiscale physical signals}. By coupling discretization parameters to spectrum-derived knee frequencies and jointly anchoring both $\Delta$ and $A$ in acquisition time units, PIMSM constructs a structured multi-scale kernel family that reduces mismatch under temporal-context, brain-state, and cross-domain shifts---without shift-specific adaptation.
 
-PIMSM consistently outperforms parameter-matched single-scale baselines across temporal covariate shift, low-resource transfer, brain-state shift, and cross-domain forecasting (Weather-5K calendar, temporal-shift, and spatial-shift splits). These results suggest that robust sequence modeling of multiscale physical signals requires architectural alignment with the intrinsic temporal organization of the underlying dynamical system---a property shared across neural and meteorological domains by their common piecewise power-law spectral structure.
+On completed HCP experiments, PIMSM improves robustness over parameter-matched single-scale baselines under severe temporal-context truncation, extreme low-resource transfer, and resting-state$\to$task-state generalization. Ongoing Weather-5K experiments test whether the same spectrum-guided temporal parameterization extends to meteorological forecasting under calendar, temporal-shift, and spatial-shift splits. Together, these results support the view that robust sequence modeling of multiscale physical signals benefits from architectural alignment with the intrinsic temporal organization of the underlying dynamical system.
 
 
 \newpage
@@ -641,17 +642,17 @@ The reconstruction loss is an $L_1$ loss over masked positions only:
 % \end{figure*}
 % -----------------------------------------------------------------------
 
-\section{HCP Motor Decoding under TR Shift: Additional Details}
+\section{HCP Motor Decoding under Temporal-Context Shift: Additional Details}
 \label{sec:appx:hcp_tr_shift}
 
-This appendix provides supporting detail for Section~\ref{sec:results:hcp_tr_shift}. The severe 2TR result is reported in the main text (Table~\ref{tab:drift2tr}); here we include the moderate 3TR table, drift intervention tables, scaling figures, and Figure~\ref{fig:tr_shift_stability}.
+This appendix provides supporting detail for Section~\ref{sec:results:hcp_tr_shift}. The severe 2TR result is reported in the main text (Table~\ref{tab:drift2tr}); here we include the moderate 3TR table, drift intervention tables, scaling figures, and Figure~\ref{fig:tr_shift_stability}. As in the main text, SpectralHyperNet uses the full trial sequence for spectral calibration, while the SSM backbone receives the truncated early-window input.
 
 \begin{table}[htbp]
 \centering
 \small
 \begin{tabular}{lcccc}
 \toprule
-Model & Full TRs & 3 TRs & CKA (Full$\leftrightarrow$3TR) & dCor (Full$\leftrightarrow$3TR) \\
+Model & Full trial & 3 TRs & CKA (Full trial$\leftrightarrow$3TR) & dCor (Full trial$\leftrightarrow$3TR) \\
 \midrule
 Mamba2 & $0.983\pm0.002$ & $0.931\pm0.010$ & $0.786\pm0.031$ & $0.817\pm0.025$ \\
 1DCNN & $0.978\pm0.007$ & $0.874\pm0.001$ & $0.585\pm0.008$ & $0.658\pm0.001$ \\
@@ -663,24 +664,24 @@ PIMSM (random $\Delta$) & $0.983\pm0.004$ & $0.934\pm0.003$ & $0.846\pm0.026$ & 
 \bottomrule
 \end{tabular}
 \caption{
-\textbf{HCP motor decoding under moderate temporal truncation (Full TR $\rightarrow$ 3 TRs).}
+\textbf{HCP motor decoding under moderate temporal-context truncation (full trial $\rightarrow$ 3 TRs).}
 }
 \label{tab:drift3tr}
 \end{table}
 
 
 \paragraph{Drift intervention.}
-We introduce explicit drift regularization for Mamba2: $\mathcal{L} = \mathcal{L}_{\text{task}} + \lambda D(z(x^{\text{Full}}), z(x^{\text{Shift}}))$. This model (Mamba2+drift) improves representation stability and decoding accuracy under TR truncation without degrading ID performance, establishing drift as a causal lever for robustness. PIMSM achieves comparable stability through architecture alone, without explicit shift supervision. See Tables~\ref{tab:drift_intervention_2tr} and~\ref{tab:drift_intervention_3tr}.
+We introduce explicit drift regularization for Mamba2: $\mathcal{L} = \mathcal{L}_{\text{task}} + \lambda D(z(x^{\text{full}}), z(x^{\text{trunc}}))$. This model (Mamba2+drift) improves representation stability and decoding accuracy under temporal-context truncation without degrading ID performance, establishing drift as a causal lever for robustness. PIMSM achieves comparable stability through architecture alone, without explicit shift supervision. See Tables~\ref{tab:drift_intervention_2tr} and~\ref{tab:drift_intervention_3tr}.
 
 \paragraph{Scaling behavior.}
-Larger PIMSM models exhibit increasingly stable representations under temporal shift, whereas single-scale SSMs fail to translate additional capacity into robustness (Figure~\ref{fig:scaling}). Additional WeightWatcher analysis (Section~\ref{sec:appx:weightwatcher}) corroborates that multi-scale structure prevents representation homogenization.
+Larger PIMSM models exhibit increasingly stable representations under temporal-context truncation, whereas single-scale SSMs fail to translate additional capacity into robustness (Figure~\ref{fig:scaling}). Additional WeightWatcher analysis (Section~\ref{sec:appx:weightwatcher}) corroborates that multi-scale structure prevents representation homogenization.
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/PIMSM_Fig3.pdf}
 \caption{
-\textbf{Scaling behavior under temporal truncation (Full TR $\rightarrow$ 2TR).}
-(a) Decoding accuracy vs model size. (b) Accuracy drop relative to Full TR. (c--d) CKA and dCor between Full TR and 2TR representations.
+\textbf{Scaling behavior under temporal-context truncation (full trial $\rightarrow$ 2TR).}
+(a) Decoding accuracy vs model size. (b) Accuracy drop relative to full-trial input. (c--d) CKA and dCor between full-trial and 2TR representations.
 }
 \label{fig:scaling}
 \end{figure}
@@ -690,13 +691,13 @@ Larger PIMSM models exhibit increasingly stable representations under temporal s
 \small
 \begin{tabular}{lcccc}
 \toprule
-Model & Full TRs & 2 TRs & CKA (Full$\leftrightarrow$2TR) & dCor (Full$\leftrightarrow$2TR) \\
+Model & Full trial & 2 TRs & CKA (Full trial$\leftrightarrow$2TR) & dCor (Full trial$\leftrightarrow$2TR) \\
 \midrule
 PIMSM & 0.987$\pm$0.007 & 0.933$\pm$0.016 & 0.812$\pm$0.033 & 0.846$\pm$0.022 \\
 Mamba2+drift & 0.987$\pm$0.004 & 0.923$\pm$0.009 & 0.837$\pm$0.021 & 0.854$\pm$0.019 \\
 \bottomrule
 \end{tabular}
-\caption{Drift intervention: Full TR $\rightarrow$ 2 TR.}
+\caption{Drift intervention: full trial $\rightarrow$ 2 TR.}
 \label{tab:drift_intervention_2tr}
 \end{table}
 
@@ -705,13 +706,13 @@ Mamba2+drift & 0.987$\pm$0.004 & 0.923$\pm$0.009 & 0.837$\pm$0.021 & 0.854$\pm$0
 \small
 \begin{tabular}{lcccc}
 \toprule
-Model & Full TRs & 3 TRs & CKA (Full$\leftrightarrow$3TR) & dCor (Full$\leftrightarrow$3TR) \\
+Model & Full trial & 3 TRs & CKA (Full trial$\leftrightarrow$3TR) & dCor (Full trial$\leftrightarrow$3TR) \\
 \midrule
 PIMSM & 0.987$\pm$0.007 & 0.944$\pm$0.005 & 0.854$\pm$0.022 & 0.878$\pm$0.020 \\
 Mamba2+drift & 0.987$\pm$0.004 & 0.939$\pm$0.011 & 0.854$\pm$0.036 & 0.879$\pm$0.025 \\
 \bottomrule
 \end{tabular}
-\caption{Drift intervention: Full TR $\rightarrow$ 3 TR.}
+\caption{Drift intervention: full trial $\rightarrow$ 3 TR.}
 \label{tab:drift_intervention_3tr}
 \end{table}
 
@@ -729,7 +730,7 @@ Results are reported in Table~\ref{tab:data_scarce} and Section~\ref{sec:results
 \centering
 \includegraphics[width=0.85\linewidth]{figures/weightwatcher_motor_full_TR.png}
 \caption{
-\textbf{WeightWatcher layer-wise $\alpha$ distributions under Full TR (HCP motor task fMRI).}
+\textbf{WeightWatcher layer-wise $\alpha$ distributions under full-trial input (HCP motor task fMRI).}
 Each point represents the power-law exponent $\alpha$ of the empirical spectral density of a weight matrix.
 The red dashed line ($\alpha = 6$) marks the boundary above which weights are statistically indistinguishable from random matrices;
 the green dashed line ($\alpha = 2$) indicates the onset of over-training.
@@ -747,7 +748,7 @@ Mamba2 and Transformer concentrate near $\alpha \approx 2$, suggesting that most
 \textbf{WeightWatcher layer-wise $\alpha$ distributions under 2 TR early-window condition (extreme temporal truncation).}
 Under the 2 TR condition---an extreme data-scarce scenario in which only two time points are available per trial---PIMSM maintains a wide $\alpha$ spread (1.75--5.29), indicating that layer-wise representational diversity is preserved despite the severely reduced input.
 In contrast, Mamba2 collapses even more uniformly to $\alpha \approx 2$ (all 37 analyzable layers saturate simultaneously), suggesting that the absence of multi-scale inductive bias leads to representation homogenization when learning signals are scarce.
-The Transformer retains a similar distribution to its Full TR counterpart but with reduced variance.
+The Transformer retains a similar distribution to its full-trial counterpart but with reduced variance.
 }
 \label{fig:ww_2tr}
 \end{figure}
@@ -756,8 +757,8 @@ WeightWatcher~\citep{martin2021predicting} quantifies the implicit self-regulari
 Matrices with $\alpha \in [2, 6]$ are considered \emph{well-trained}: $\alpha < 2$ indicates over-training (insufficient regularization), and $\alpha > 6$ indicates that the matrix is statistically indistinguishable from a random initialization.
 Note that WeightWatcher analyzes 2D matrices only; 4D convolution tensors (as in 1D-CNN) are excluded except for the final linear layer.
 
-\paragraph{Full TR condition (Figure~\ref{fig:ww_full_tr}).}
-Under the standard Full TR condition, PIMSM exhibits $\alpha \in [1.77, 3.69]$ with notable layer-to-layer variation.
+\paragraph{Full-trial condition (Figure~\ref{fig:ww_full_tr}).}
+Under the standard full-trial condition, PIMSM exhibits $\alpha \in [1.77, 3.69]$ with notable layer-to-layer variation.
 This heterogeneity reflects the multi-scale inductive bias of the architecture: different PIMSM layers specialize to capture temporal correlations at different scales, resulting in layers with distinct implicit regularization properties.
 In contrast, Mamba2 and Transformer accumulate near $\alpha \approx 2.0$, indicating that most layers are in a saturated learning state.
 These models may be efficiently encoding in-distribution patterns but leave little representational capacity available for adaptation under shift.
@@ -766,7 +767,7 @@ These models may be efficiently encoding in-distribution patterns but leave litt
 Under the extreme 2 TR condition, PIMSM's $\alpha$ distribution widens further (1.75--5.29).
 Rather than homogenizing under reduced input, the multi-scale architecture preserves layer-wise role differentiation---deeper layers tend toward higher $\alpha$ (less specialized), while early layers remain well-fitted---suggesting that the model gracefully degrades without global collapse.
 Mamba2, by contrast, narrows its $\alpha$ distribution toward $\approx 2.0$ with near-zero variance across all 37 analyzable layers, consistent with representation homogenization under information-sparse inputs.
-The Transformer shows moderate variance reduction but remains closer to its Full TR distribution, perhaps due to the global attention mechanism retaining some diversity.
+The Transformer shows moderate variance reduction but remains closer to its full-trial distribution, perhaps due to the global attention mechanism retaining some diversity.
 
 \paragraph{Interpretation.}
 These layer-wise spectral analyses provide weight-level corroboration for the conclusion drawn from CKA and distance correlation measurements:
@@ -783,12 +784,12 @@ The preserved heterogeneity of $\alpha$ values across layers suggests that the p
 \centering
 \begin{tabular}{lccccc}
 \toprule
-Model & From Scratch & Full TRs & 2 TRs & CKA & dCor \\
+Model & From Scratch & Full trial & 2 TRs & CKA & dCor \\
 \midrule
 PIMSM & $0.987 \pm 0.007$ & $0.987 \pm 0.004$ & $\mathbf{0.937 \pm 0.009}$ & $\mathbf{0.867 \pm 0.004}$ & $\mathbf{0.889 \pm 0.009}$ \\
 Mamba2 & $0.983 \pm 0.002$ & $0.987 \pm 0.007$ & $0.933 \pm 0.011$ & $0.847 \pm 0.024$ & $0.860 \pm 0.024$ \\
 \midrule
-Model & From Scratch & Full TRs & 3 TRs & CKA & dCor \\
+Model & From Scratch & Full trial & 3 TRs & CKA & dCor \\
 \midrule
 PIMSM & $0.987 \pm 0.007$ & $0.987 \pm 0.004$ & $\mathbf{0.949 \pm 0.012}$ & $\mathbf{0.878 \pm 0.005}$ & $\mathbf{0.899 \pm 0.002}$ \\
 Mamba2 & $0.983 \pm 0.002$ & $0.987 \pm 0.007$ & $0.944 \pm 0.006$ & $0.874 \pm 0.010$ & $0.887 \pm 0.011$ \\
@@ -796,7 +797,7 @@ Mamba2 & $0.983 \pm 0.002$ & $0.987 \pm 0.007$ & $0.944 \pm 0.006$ & $0.874 \pm 
 \end{tabular}
 \caption{
 Effect of self-supervised pretraining on resting-state fMRI followed by finetuning on HCP motor task fMRI.
-Representation similarity (CKA, dCor) is measured between Full TR and temporally downsampled inputs.
+Representation similarity (CKA, dCor) is measured between full-trial and early-window inputs.
 Pretraining consistently improves shift robustness for both models, with PIMSM retaining a small but consistent advantage in representation stability.
 }
 \label{tab:pretrain_finetune}
@@ -814,12 +815,12 @@ These margins are consistent but modest, suggesting that the primary benefit of 
 \centering
 \begin{tabular}{lccccc}
 \toprule
-Model & From Scratch & Full TRs & 2 TRs & CKA & dCor \\
+Model & From Scratch & Full trial & 2 TRs & CKA & dCor \\
 \midrule
 PIMSM & $0.987 \pm 0.007$ & $0.934 \pm 0.015$ & $\mathbf{0.748 \pm 0.003}$ & $0.444 \pm 0.029$ & $\mathbf{0.469 \pm 0.020}$ \\
 Mamba2 & $0.983 \pm 0.002$ & $\mathbf{0.936 \pm 0.015}$ & $0.730 \pm 0.015$ & $\mathbf{0.448 \pm 0.041}$ & $0.462 \pm 0.036$ \\
 \midrule
-Model & From Scratch & Full TRs & 3 TRs & CKA & dCor \\
+Model & From Scratch & Full trial & 3 TRs & CKA & dCor \\
 \midrule
 PIMSM & $0.987 \pm 0.007$ & $0.934 \pm 0.015$ & $\mathbf{0.791 \pm 0.027}$ & $0.470 \pm 0.032$ & $\mathbf{0.489 \pm 0.026}$ \\
 Mamba2 & $0.983 \pm 0.002$ & $\mathbf{0.936 \pm 0.015}$ & $0.767 \pm 0.023$ & $\mathbf{0.475 \pm 0.042}$ & $0.484 \pm 0.035$ \\
@@ -828,13 +829,13 @@ Mamba2 & $0.983 \pm 0.002$ & $\mathbf{0.936 \pm 0.015}$ & $0.767 \pm 0.023$ & $\
 \caption{
 Linear probing evaluation of pretrained models on HCP motor task fMRI.
 The backbone is frozen and only a linear classifier is trained.
-CKA and dCor are measured between Full TR and downsampled representations of the frozen backbone.
-Both models achieve comparable Full TR accuracy ($\approx 0.93$), but PIMSM maintains slightly higher shifted-condition accuracy under 2 TR and 3 TR conditions.
+CKA and dCor are measured between full-trial and early-window representations of the frozen backbone.
+Both models achieve comparable full-trial accuracy ($\approx 0.93$), but PIMSM maintains slightly higher shifted-condition accuracy under 2 TR and 3 TR conditions.
 }
 \label{tab:linear_probe}
 \end{table}
 
-Under strict linear probing, both PIMSM and Mamba2 achieve similar Full TR accuracy ($\approx 0.93$).
+Under strict linear probing, both PIMSM and Mamba2 achieve similar full-trial accuracy ($\approx 0.93$).
 Shifted-condition accuracy drops substantially for both models relative to the finetuning setting (Table~\ref{tab:pretrain_finetune}), reflecting the difficulty of adapting frozen representations to temporal-resolution shift via a linear readout alone.
 PIMSM maintains a consistent advantage: $0.748 \pm 0.003$ vs.\ $0.730 \pm 0.015$ at 2 TR, and $0.791 \pm 0.027$ vs.\ $0.767 \pm 0.023$ at 3 TR.
 CKA values under the frozen setting are substantially lower than under finetuning, suggesting that the full representational benefit of physics-informed pretraining is realized during downstream adaptation rather than through passively linearly separable representations.
@@ -987,7 +988,7 @@ This provides a theoretical mechanism underlying the empirical advantage of Spec
 \section{Delta Mapping Ablation: Mixing Weight and Normalization Mode}
 \label{sec:appx:delta_ablation}
 
-The per-band frequency-to-delta mapping combines global band position $p_k$ and within-band normalized frequency $t_k$ via $m_k = p_k(1-w) + w\,t_k$. To assess sensitivity to this design choice, we ablate (i) the mixing weight $w \in \{0, 0.3, 0.5, 1.0\}$ and (ii) normalization mode (global vs.\ per-band). At $w=0$, $m_k = p_k$ (band position only); at $w=1$, $m_k = t_k$ (within-band variation only); the default $w=0.3$ balances both. Global normalization maps $f_{c,k}$ directly onto $[\Delta_{\min}, \Delta_{\max}]$ without per-band boundaries. These ablations allow reviewers to verify that the core principle---higher $f \to$ larger $\Delta$---drives the benefit, rather than the specific mixing formula. Ablation results (motor decoding accuracy and CKA under TR truncation vs.\ $w$ and normalization mode) can be reported in the supplement or camera-ready version.
+The per-band frequency-to-delta mapping combines global band position $p_k$ and within-band normalized frequency $t_k$ via $m_k = p_k(1-w) + w\,t_k$. To assess sensitivity to this design choice, we ablate (i) the mixing weight $w \in \{0, 0.3, 0.5, 1.0\}$ and (ii) normalization mode (global vs.\ per-band). At $w=0$, $m_k = p_k$ (band position only); at $w=1$, $m_k = t_k$ (within-band variation only); the default $w=0.3$ balances both. Global normalization maps $f_{c,k}$ directly onto $[\Delta_{\min}, \Delta_{\max}]$ without per-band boundaries. These ablations are designed to verify that the core principle---higher $f \to$ larger $\Delta$---drives the benefit, rather than the specific mixing formula.
 
 \section{Dataset and Preprocessing Details}
 \label{sec:appx:data}
@@ -995,7 +996,7 @@ The per-band frequency-to-delta mapping combines global band position $p_k$ and 
 \paragraph{HCP-1200 motor task fMRI.}
 Time series were extracted from 360 cortical regions (HCPMMP1 atlas~\citep{glasser2016multi}), yielding inputs $\mathbf{x}_{1:T}\in\mathbb{R}^{T\times360}$ (TR$=0.72$\,s).
 Event-related segments for five motor conditions (LH, RH, LF, RF, T) were extracted with a maximum block length of 17 TRs; each ROI time series was z-score normalized per run.
-\textbf{Temporal shift:} trials truncated to first 3 or 2 TRs.
+\textbf{Temporal-context shift:} SpectralHyperNet receives the full trial sequence for spectral calibration, while the SSM backbone input is truncated to the first 3 or 2 TRs. This tests early-window decoding with full-sequence spectral scale estimates, not a change in scanner TR or sampling rate.
 \textbf{Low-resource:} labeled fraction varied in $\{1\%, 5\%, 10\%, 100\%\}$; validation and test sets unchanged.
 
 \paragraph{HCP resting-state fMRI (brain-state shift).}
