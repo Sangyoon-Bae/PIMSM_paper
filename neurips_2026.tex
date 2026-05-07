@@ -183,7 +183,7 @@ For Weather-5K, the same setup is used with a regression head and variable-wise 
 \section{Theory}
 \label{sec:theory}
 
-A single effective timescale defines a constrained temporal weighting function: faster decay emphasizes recent samples and passes more high-frequency variation, whereas slower decay averages over longer lags and preserves context at the cost of lag or missed rapid changes~\citep{oppenheim2010discrete,brown1959statistical}.
+A single effective timescale defines a constrained temporal weighting function: faster decay emphasizes recent samples and passes more high-frequency variation, whereas slower decay averages over longer lags and preserves context at the cost of lag or missed rapid changes~\citep{oppenheim1999discrete,brown1959statistical}.
 In an SSM, this weighting function is the temporal kernel, whose decay profile specifies the contribution of each past lag to the current representation.
 When TR, context length, brain state, or station regime changes, the task-relevant lag structure can change; a model whose induced kernel remains poorly aligned to that structure will produce shifted latent states.
 We therefore formalize the memory-alignment problem as temporal-kernel mismatch and analyze how kernel error propagates to representation and prediction error.
@@ -192,7 +192,7 @@ PIMSM addresses this by maintaining multiple spectrum-derived kernels rather tha
 \subsection{Memory as Kernel Matching}
 \label{sec:theory:kernelbound}
 
-Many SSM-based encoders admit a locally linear convolutional view~\citep{gu2022s4,gu2023mamba}:
+Many SSM-based encoders admit a locally linear convolutional view~\citep{gu2021efficiently,gu2023mamba}:
 \begin{equation}
 h(t) \;=\; \int_{0}^{\infty} g(\tau)\, x(t-\tau)\, d\tau,
 \qquad
