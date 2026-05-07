@@ -239,13 +239,13 @@ Appendix~\ref{sec:appx:kernel_approx} gives a complementary approximation view f
 \includegraphics[width=\linewidth]{figures/PIMSM_Fig1.pdf}
 \caption{
 \textbf{Physics-informed multi-scale parameterization of temporal dynamics.}
-\textbf{(a)} SpectralHyperNet estimates spectral regimes from the input and uses them to parameterize a multi-scale SSM, whose scale-specific states are fused by cross-scale attention.
+\textbf{(a)} SpectralHyperNet estimates spectral regimes from the input and uses them to parameterize a multi-scale SSM, whose scale-specific states interact through cross-scale attention.
 \textbf{(b1--b3)} Piecewise spectral structure is mapped to ordered discretization parameters ($\Delta_1 \ge \Delta_2 \ge \Delta_3$), inducing fast-to-slow temporal kernels.
 }
 \label{fig:architecture_multiscale}
 \end{figure}
 
-PIMSM (Physics-Informed Multi-Scale Mamba) is designed to integrate multi-scale temporal structure into a state-space framework without relying on modality-specific components. As illustrated in Fig.~1, the model consists of three stages: (1) spectral analysis and scale inference via a SpectralHyperNet, (2) scale-conditioned multi-scale SSM processing, and (3) cross-scale fusion through lightweight attention. Given an input time series $\mathbf{x}_{1:T} \in \mathbb{R}^d$, the model produces latent representations that are subsequently pooled and passed to a task-specific prediction head.
+PIMSM integrates multi-scale temporal structure into a state-space framework without relying on modality-specific components. As shown in Fig.~\ref{fig:architecture_multiscale}, the model first analyzes the input sequence in the frequency domain to infer the spectral regimes that organize the signal. These inferred regimes are then converted into scale-specific SSM parameters, so different groups of SSM heads implement distinct lag-weighting profiles rather than sharing a single dominant memory scale. The resulting scale-specific latent states are passed through lightweight cross-scale attention to model interactions among temporal scales, allowing fast and slow temporal evidence to modulate one another before prediction. Given an input time series $\mathbf{x}_{1:T} \in \mathbb{R}^d$, the fused representation is pooled over time and passed to a task-specific head for classification or forecasting.
 
 The SpectralHyperNet estimates knee frequencies $(f_1, f_2)$ and scaling exponents from the power spectral density, defining a finite set of characteristic frequency regimes. For each regime, a center frequency $f_{c,k}$ is mapped to a discretization parameter through a monotonic transformation, linking spectral structure to temporal update dynamics in physical time units. Higher-frequency regimes induce larger update steps and faster kernels, while lower-frequency regimes preserve longer memory. By tying discretization to spectrum-derived scales, PIMSM induces a hierarchy of lag-weighting profiles that align with observed frequency regimes, reducing temporal-kernel mismatch under structured shifts.
 
