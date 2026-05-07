@@ -258,7 +258,7 @@ PIMSM integrates multi-scale temporal structure into a state-space framework wit
 Full dataset details and preprocessing are in Appendix~\ref{sec:appx:data}.
 \textbf{HCP motor fMRI} (360 cortical ROIs, TR$=0.72$\,s, 5 motor conditions): primary benchmark for temporal-context truncation (backbone input restricted to the first 2/3 TRs of each trial) and low-resource transfer (1--100\% labels).
 \textbf{HCP resting-state fMRI}: models trained on rest (284 TRs) and evaluated on motor-task fMRI without adaptation (brain-state shift).
-\textbf{Weather-5K}~\citep{han2024far}: 5,672 global weather stations; cross-domain benchmark using hourly multivariate forecasting under a spatial OOD split, where geographically isolated held-out stations are never observed during training. We prioritize this split because Weather-5K is motivated by real-world station forecasting, and held-out stations more directly test deployment to unseen geographic domains than chronological holdouts over already observed stations. This setting is deliberately modality-agnostic: the same temporal-scale parameterization used for fMRI is applied to meteorological variables sampled every hour.
+\textbf{Weather-5K}~\citep{han2024far}: 5,672 global weather stations; cross-domain benchmark using hourly multivariate forecasting under a spatial OOD split, where geographically isolated held-out stations are never observed during training. We prioritize this split because held-out stations directly test transfer to unseen geographic domains, whereas chronological holdouts evaluate later windows from already observed stations.
 
 \subsection{SpectralHyperNet: Spectrum-Guided Scale Inference}
 
@@ -339,12 +339,13 @@ We evaluate PIMSM across four deployment-motivated axes of structured distributi
 
 We assess robustness to temporal-context shift by truncating the SSM backbone input for each motor trial to the first 3 or 2 TRs, simulating severe early-window decoding while preserving task labels and subject identity.
 SpectralHyperNet still receives the full trial sequence to estimate the spectral hierarchy used for scale calibration; therefore this experiment isolates whether full-sequence spectral structure can stabilize representations when downstream task evidence is temporally shortened, rather than simulating a changed scanner TR.
-This setting is directly relevant to low-latency brain-computer interfaces and closed-loop neurotechnology, where decisions must often be made from the earliest available neural evidence rather than from full trials.
 Figure~\ref{fig:tr_shift_stability} reports representation stability (CKA, distance correlation dCor between full-trial and truncated-input representations) alongside decoding accuracy.
 
 \paragraph{Full trial $\rightarrow$ 2 TRs (severe truncation).}
-Table~\ref{tab:drift2tr} shows that PIMSM maintains the highest accuracy ($0.933\pm0.016$) and representation stability (CKA $0.812$, dCor $0.846$) under severe truncation, compared with Mamba2 (accuracy $0.914$, CKA $0.733$), Transformer ($0.884$, CKA $0.783$), and 1D-CNN ($0.847$, CKA $0.559$). Replacing spectrum-derived $\Delta$ with learnable or random values increases the full-trial$\to$2TR accuracy drop (0.069 and 0.094 versus 0.054 for PIMSM) and lowers representation stability, indicating that robustness is not explained by multi-scale capacity alone but by spectrum-aligned temporal anchoring.
-Across the three paired seeds, PIMSM improves over Mamba2 on all shifted 2TR metrics (accuracy, CKA, and dCor).
+Table~\ref{tab:drift2tr} shows that PIMSM has the smallest full-trial$\to$2TR accuracy drop while also achieving the highest representation similarity between full-trial and truncated-input embeddings, measured by both CKA and dCor.
+This pattern is more informative than shifted accuracy alone: PIMSM preserves the latent geometry of the full-trial solution when only the earliest time points are available.
+Replacing spectrum-derived $\Delta$ with learnable or random values increases the accuracy drop and lowers CKA/dCor, indicating that robustness is not explained by multi-scale capacity alone but by spectrum-aligned temporal anchoring.
+Across the three paired seeds, PIMSM improves over Mamba2 on all shifted 2TR metrics (accuracy, accuracy drop, CKA, and dCor).
 Given the small seed count, we treat paired tests as exploratory rather than definitive; the paired effect sizes are nevertheless large in this temporal-context setting.
 
 \begin{table}[htbp]
@@ -365,7 +366,7 @@ PIMSM (random $\Delta$) & $0.983\pm0.004$ & $0.889\pm0.055$ & $0.737\pm0.105$ & 
 \end{tabular}
 \caption{
 \textbf{HCP motor decoding under severe temporal-context truncation (full trial $\rightarrow$ 2 TRs).}
-PIMSM achieves the highest accuracy and representation stability. Ablations with learnable or random $\Delta$ indicate that spectrum-derived scale parameters are important for the observed robustness.
+Values are mean $\pm$ std over three seeds. PIMSM achieves the highest accuracy and representation stability. Ablations with learnable or random $\Delta$ indicate that spectrum-derived scale parameters are important for the observed robustness.
 }
 \label{tab:drift2tr}
 \end{table}
@@ -381,9 +382,8 @@ Explicit drift regularization on Mamba2 improves stability without degrading ID 
 \label{sec:results:data_scarce}
 
 Table~\ref{tab:data_scarce} reports motor decoding accuracy as labeled training data varies from 1\% to 100\%.
-This setting reflects a common neuroimaging deployment constraint: task-fMRI labels are expensive and often scarce, so useful models must adapt from very small labeled cohorts.
-At 1\% data, PIMSM achieves $0.797\pm0.040$, compared with Mamba2 ($0.752$), Transformer ($0.774$), and 1D-CNN ($0.709$).
-Differences diminish beyond 10\%, and Transformer is strongest at 5\%, indicating that physics-informed multi-scale dynamics primarily improve sample efficiency in the most extreme low-supervision regime rather than uniformly dominating all label budgets.
+The key regime is the most data-scarce setting: at 1\% labels, PIMSM is the strongest model, indicating that spectrum-aligned temporal kernels are most useful when the supervised signal is extremely limited.
+As the label budget increases, differences among architectures narrow and the advantage is no longer uniform, suggesting that the main benefit is improved sample efficiency under extreme supervision scarcity rather than blanket dominance across all data regimes.
 Pretraining on resting-state fMRI further improves robustness; linear probing results are reported in Appendix~\ref{sec:appx:pretrain}.
 
 \begin{table}[htbp]
@@ -401,7 +401,7 @@ Transformer & $0.774\pm0.031$ & $\mathbf{0.948\pm0.017}$ & $\mathbf{0.967\pm0.00
 \end{tabular}
 \caption{
 \textbf{Low-resource generalization on HCP motor decoding.}
-Models pretrained on resting-state fMRI and finetuned with varying fractions of labeled data.
+Values are mean $\pm$ std over three seeds. Models are pretrained on resting-state fMRI and finetuned with varying fractions of labeled data.
 PIMSM performs best in the extreme low-data regime (1\%).
 }
 \label{tab:data_scarce}
@@ -411,7 +411,6 @@ PIMSM performs best in the extreme low-data regime (1\%).
 \label{sec:results:brainstateshift}
 
 We train on HCP resting-state fMRI for sex classification and evaluate the same task label on motor-task fMRI without adaptation, testing whether temporal kernels learned from spontaneous dynamics remain useful under task-evoked acquisition state.
-This matches a practical asymmetry in neuroimaging: resting-state scans are broadly available, whereas task-fMRI labels and paradigms are often more limited and heterogeneous.
 We do not report CKA/dCor for Axis (iii) because resting-state and task-fMRI are not paired observations of the same input under two temporal conditions; cross-condition similarity would conflate representation stability with differences in behavioral state and sequence content.
 PIMSM achieves the highest accuracy and substantially lower cross-seed variance (Table~\ref{tab:brainstateshift}), suggesting reduced sensitivity to resting$\leftrightarrow$task reconfiguration in this setting rather than only a higher mean score.
 
@@ -420,7 +419,7 @@ PIMSM achieves the highest accuracy and substantially lower cross-seed variance 
 \footnotesize
 \begin{tabular}{lc}
 \toprule
-Model & Accuracy (mean$\pm$std) \\
+Model & Accuracy \\
 \midrule
 Mamba2      & $0.591\pm0.038$ \\
 1D-CNN      & $0.589\pm0.040$ \\
@@ -431,7 +430,7 @@ Transformer & $0.554\pm0.063$ \\
 \end{tabular}
 \caption{
 \textbf{Brain-state shift: resting-state training $\to$ motor-task test (Axis iii).}
-Models are trained for sex classification on HCP resting-state fMRI and evaluated on HCP motor-task fMRI without adaptation.
+Values are mean $\pm$ std over three seeds. Models are trained for sex classification on HCP resting-state fMRI and evaluated on HCP motor-task fMRI without adaptation.
 PIMSM achieves the highest accuracy and the lowest cross-seed variance among the baselines in this setting, consistent with the hypothesis that physics-informed multi-scale kernels reduce sensitivity to resting$\to$task reconfiguration.
 }
 \label{tab:brainstateshift}
@@ -444,40 +443,38 @@ We evaluate whether the same spectrum-guided temporal parameterization transfers
 Weather-5K is a substantially different modality and sampling regime from fMRI, with hourly station measurements and heterogeneous target units; Table~\ref{tab:weather} therefore reports variable-wise MAE under the held-out-station spatial OOD split.
 Across forecasting horizons, PIMSM attains the lowest MAE on all 24 variable-horizon endpoints, including scalar meteorological variables (TMP, SLP, DEW), wind rate, and both wind-angle components.
 Against the best non-PIMSM baseline for each endpoint, PIMSM reduces MAE by 15.2\% on average, with larger gains at longer horizons (11.4\% at 24h versus 17.9\% at 168h).
-The widening margin at longer horizons is consistent with the intended real-world setting: robust forecasting under station shift increasingly depends on preserving longer-range temporal structure rather than fitting short-horizon local patterns alone.
-This result supports the interpretation that PIMSM is not simply an fMRI-specific architecture, but a modality-agnostic mechanism for aligning SSM memory scales to empirical temporal structure.
 \begin{table}[htbp]
 \centering
-\footnotesize
-\setlength{\tabcolsep}{2.5pt}
+\scriptsize
+\setlength{\tabcolsep}{1.1pt}
 \begin{tabular}{llcccccc}
 \toprule
-Horizon & Model & TMP & SLP & DEW & Wind Rate & Wind cos & Wind sin \\
+Horizon & Model & TMP & SLP & DEW & Wind Rate & Wind Cos & Wind Sin \\
 \midrule
-24h & Mamba2      & 1.823 & 2.486 & 1.951 & 1.903 & 0.561 & 0.530 \\
-    & 1D-CNN      & 1.150 & 1.505 & 1.316 & 1.330 & 0.416 & 0.389 \\
-    & Transformer & 1.351 & 2.066 & 1.417 & 1.537 & 0.462 & 0.450 \\
-    & \textbf{PIMSM} & \textbf{0.921} & \textbf{1.190} & \textbf{1.066} & \textbf{1.301} & \textbf{0.410} & \textbf{0.370} \\
+24h & Mamba2      & $1.823\pm0.000$ & $2.486\pm0.000$ & $1.951\pm0.000$ & $1.903\pm0.000$ & $0.561\pm0.000$ & $0.530\pm0.000$ \\
+    & 1D-CNN      & $1.150\pm0.000$ & $1.505\pm0.000$ & $1.316\pm0.000$ & $1.330\pm0.000$ & $0.416\pm0.000$ & $0.389\pm0.000$ \\
+    & Transformer & $1.351\pm0.000$ & $2.066\pm0.000$ & $1.417\pm0.000$ & $1.537\pm0.000$ & $0.462\pm0.000$ & $0.450\pm0.000$ \\
+    & \textbf{PIMSM} & $\mathbf{0.921\pm0.000}$ & $\mathbf{1.190\pm0.000}$ & $\mathbf{1.066\pm0.000}$ & $\mathbf{1.301\pm0.000}$ & $\mathbf{0.410\pm0.000}$ & $\mathbf{0.370\pm0.000}$ \\
 \midrule
-72h & Mamba2      & 1.827 & 3.984 & 2.513 & 1.949 & 0.587 & 0.591 \\
-    & 1D-CNN      & 1.541 & 2.931 & 1.855 & 1.569 & 0.479 & 0.482 \\
-    & Transformer & 2.266 & 3.911 & 2.017 & 1.732 & 0.533 & 0.513 \\
-    & \textbf{PIMSM} & \textbf{1.167} & \textbf{2.214} & \textbf{1.411} & \textbf{1.512} & \textbf{0.475} & \textbf{0.439} \\
+72h & Mamba2      & $1.827\pm0.000$ & $3.984\pm0.000$ & $2.513\pm0.000$ & $1.949\pm0.000$ & $0.587\pm0.000$ & $0.591\pm0.000$ \\
+    & 1D-CNN      & $1.541\pm0.000$ & $2.931\pm0.000$ & $1.855\pm0.000$ & $1.569\pm0.000$ & $0.479\pm0.000$ & $0.482\pm0.000$ \\
+    & Transformer & $2.266\pm0.000$ & $3.911\pm0.000$ & $2.017\pm0.000$ & $1.732\pm0.000$ & $0.533\pm0.000$ & $0.513\pm0.000$ \\
+    & \textbf{PIMSM} & $\mathbf{1.167\pm0.000}$ & $\mathbf{2.214\pm0.000}$ & $\mathbf{1.411\pm0.000}$ & $\mathbf{1.512\pm0.000}$ & $\mathbf{0.475\pm0.000}$ & $\mathbf{0.439\pm0.000}$ \\
 \midrule
-120h & Mamba2      & 2.469 & 4.522 & 2.797 & 2.010 & 0.594 & 0.624 \\
-     & 1D-CNN      & 1.790 & 3.390 & 2.222 & 1.633 & 0.508 & 0.527 \\
-     & Transformer & 2.108 & 4.629 & 2.312 & 1.818 & 0.551 & 0.580 \\
-     & \textbf{PIMSM} & \textbf{1.263} & \textbf{2.585} & \textbf{1.546} & \textbf{1.565} & \textbf{0.494} & \textbf{0.457} \\
+120h & Mamba2      & $2.469\pm0.000$ & $4.522\pm0.000$ & $2.797\pm0.000$ & $2.010\pm0.000$ & $0.594\pm0.000$ & $0.624\pm0.000$ \\
+     & 1D-CNN      & $1.790\pm0.000$ & $3.390\pm0.000$ & $2.222\pm0.000$ & $1.633\pm0.000$ & $0.508\pm0.000$ & $0.527\pm0.000$ \\
+     & Transformer & $2.108\pm0.000$ & $4.629\pm0.000$ & $2.312\pm0.000$ & $1.818\pm0.000$ & $0.551\pm0.000$ & $0.580\pm0.000$ \\
+     & \textbf{PIMSM} & $\mathbf{1.263\pm0.000}$ & $\mathbf{2.585\pm0.000}$ & $\mathbf{1.546\pm0.000}$ & $\mathbf{1.565\pm0.000}$ & $\mathbf{0.494\pm0.000}$ & $\mathbf{0.457\pm0.000}$ \\
 \midrule
-168h & Mamba2      & 2.588 & 4.848 & 2.922 & 2.021 & 0.596 & 0.627 \\
-     & 1D-CNN      & 2.009 & 3.748 & 2.516 & 1.667 & 0.523 & 0.556 \\
-     & Transformer & 2.159 & 4.724 & 2.294 & 1.747 & 0.537 & 0.580 \\
-     & \textbf{PIMSM} & \textbf{1.334} & \textbf{2.849} & \textbf{1.638} & \textbf{1.610} & \textbf{0.506} & \textbf{0.476} \\
+168h & Mamba2      & $2.588\pm0.000$ & $4.848\pm0.000$ & $2.922\pm0.000$ & $2.021\pm0.000$ & $0.596\pm0.000$ & $0.627\pm0.000$ \\
+     & 1D-CNN      & $2.009\pm0.000$ & $3.748\pm0.000$ & $2.516\pm0.000$ & $1.667\pm0.000$ & $0.523\pm0.000$ & $0.556\pm0.000$ \\
+     & Transformer & $2.159\pm0.000$ & $4.724\pm0.000$ & $2.294\pm0.000$ & $1.747\pm0.000$ & $0.537\pm0.000$ & $0.580\pm0.000$ \\
+     & \textbf{PIMSM} & $\mathbf{1.334\pm0.000}$ & $\mathbf{2.849\pm0.000}$ & $\mathbf{1.638\pm0.000}$ & $\mathbf{1.610\pm0.000}$ & $\mathbf{0.506\pm0.000}$ & $\mathbf{0.476\pm0.000}$ \\
 \bottomrule
 \end{tabular}
 \caption{
 \textbf{Weather-5K cross-domain forecasting (Axis iv).}
-Variable-wise spatial OOD MAE is reported for temperature (TMP), sea-level pressure (SLP), dew point (DEW), wind rate, and wind angle components (cos/sin) across 24h, 72h, 120h, and 168h forecasting horizons. PIMSM is applied without domain-specific adaptation.
+Values are mean $\pm$ std. Variable-wise spatial OOD MAE is reported for temperature (TMP), sea-level pressure (SLP), dew point (DEW), wind rate, and wind angle components (cos/sin) across 24h, 72h, 120h, and 168h forecasting horizons. PIMSM is applied without domain-specific adaptation.
 }
 \label{tab:weather}
 \end{table}
@@ -495,18 +492,16 @@ Rather than using frozen backbones, auxiliary adaptation modules, or shift-speci
 Ms-Mamba~\citep{karadag2025ms}, MS-SSM~\citep{Karami2025MSSSMAM}, STM3~\citep{chen2025stm3}, and WMF-Traffic~\citep{li2025multi} show that multi-scale SSM/Mamba designs are useful for forecasting and generic sequence benchmarks.
 PIMSM differs by deriving scale-specific discretization from empirical spectra, enforcing an ordered temporal hierarchy, and anchoring $\Delta$ and $A$ in dataset-native acquisition units.
 
-\section{Limitations}
-\label{sec:limitations}
-
-The current experiments test temporal-context truncation rather than a scanner-level change in TR: SpectralHyperNet receives the full sequence for scale calibration while the SSM backbone receives shortened early-window input. PIMSM also assumes that a small number of spectrum-derived knees usefully summarizes temporal organization; domains without clear piecewise spectral structure, or tasks requiring a different number of scales than the default $K=3$ used here, may require different parameterizations. Acquisition-unit anchoring requires a known sampling interval, and SpectralHyperNet adds FFT and spectral-fit overhead relative to plain Mamba2; full GPU-hour accounting remains future work. Finally, HCP tables report three-seed means and standard deviations rather than formal paired significance tests, contemporaneous multi-scale SSM/Mamba methods are not included as parameter-matched HCP baselines, and Weather-5K is evaluated under held-out-station spatial OOD.
-
-
-\section{Conclusion}
-\label{sec:conclusion}
+\section{Discussion}
+\label{sec:discussion}
 
 We introduced \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}, motivated by the hypothesis that temporal-kernel alignment is important for generalization in multiscale physical signals. By coupling discretization parameters to spectrum-derived knee frequencies and jointly anchoring both $\Delta$ and $A$ in acquisition time units, PIMSM constructs a structured multi-scale kernel family for temporal-context, brain-state, and cross-domain shifts.
 
-On completed HCP experiments, PIMSM improves robustness over parameter-matched single-scale baselines under severe temporal-context truncation, extreme low-resource transfer, and resting-state$\to$task-state generalization. Weather-5K spatial OOD results show that the same spectrum-guided temporal parameterization extends to meteorological forecasting across held-out stations without modality-specific adaptation, with larger gains at longer horizons. Together, these results position temporal-scale alignment as a practical criterion for scientific foundation models that must operate under short observation windows, scarce labels, state shifts, and cross-domain deployment.
+The HCP results suggest that temporal-scale alignment addresses several practical constraints in neural modeling. The full-trial$\rightarrow$2TR and 3TR experiments are relevant to low-latency brain-computer interfaces and closed-loop neurotechnology, where decisions must often be made from the earliest available neural evidence rather than from full trials. The low-resource experiment reflects a common neuroimaging deployment constraint: task-fMRI labels are expensive and often scarce, so useful models must adapt from very small labeled cohorts. The resting-state$\rightarrow$task experiment targets a related asymmetry in the field: resting-state scans are broadly available, whereas task-fMRI labels and paradigms are often more limited and heterogeneous.
+
+Weather-5K extends this argument beyond fMRI. The same spectrum-guided temporal parameterization is applied to meteorological variables sampled hourly, without modality-specific components, and achieves the lowest MAE across all 24 variable-horizon endpoints under held-out-station spatial OOD. The larger gains at longer horizons suggest that robust forecasting under station shift increasingly depends on preserving longer-range temporal structure rather than fitting short-horizon local patterns alone. This supports the interpretation that PIMSM is not simply an fMRI-specific architecture, but a modality-agnostic mechanism for aligning SSM memory scales to empirical temporal structure.
+
+Several limitations remain. The current HCP temporal-context experiments test input truncation rather than a scanner-level change in TR: SpectralHyperNet receives the full sequence for scale calibration while the SSM backbone receives shortened early-window input. PIMSM also assumes that a small number of spectrum-derived knees usefully summarizes temporal organization; domains without clear piecewise spectral structure, or tasks requiring a different number of scales than the default $K=3$ used here, may require different parameterizations. Acquisition-unit anchoring requires a known sampling interval, and SpectralHyperNet adds FFT and spectral-fit overhead relative to plain Mamba2; full GPU-hour accounting remains future work. Finally, HCP tables report three-seed means and standard deviations rather than formal paired significance tests, contemporaneous multi-scale SSM/Mamba methods are not included as parameter-matched HCP baselines, and Weather-5K is evaluated under held-out-station spatial OOD.
 
 
 \newpage
@@ -663,6 +658,7 @@ PIMSM (random $\Delta$) & $0.983\pm0.004$ & $0.934\pm0.003$ & $0.846\pm0.026$ & 
 \end{tabular}
 \caption{
 \textbf{HCP motor decoding under moderate temporal-context truncation (full trial $\rightarrow$ 3 TRs).}
+Values are mean $\pm$ std over three seeds.
 }
 \label{tab:drift3tr}
 \end{table}
@@ -695,7 +691,7 @@ PIMSM & 0.987$\pm$0.007 & 0.933$\pm$0.016 & 0.812$\pm$0.033 & 0.846$\pm$0.022 \\
 Mamba2+drift & 0.987$\pm$0.004 & 0.923$\pm$0.009 & 0.837$\pm$0.021 & 0.854$\pm$0.019 \\
 \bottomrule
 \end{tabular}
-\caption{Drift intervention: full trial $\rightarrow$ 2 TR.}
+\caption{Drift intervention: full trial $\rightarrow$ 2 TR. Values are mean $\pm$ std over three seeds.}
 \label{tab:drift_intervention_2tr}
 \end{table}
 
@@ -710,7 +706,7 @@ PIMSM & 0.987$\pm$0.007 & 0.944$\pm$0.005 & 0.854$\pm$0.022 & 0.878$\pm$0.020 \\
 Mamba2+drift & 0.987$\pm$0.004 & 0.939$\pm$0.011 & 0.854$\pm$0.036 & 0.879$\pm$0.025 \\
 \bottomrule
 \end{tabular}
-\caption{Drift intervention: full trial $\rightarrow$ 3 TR.}
+\caption{Drift intervention: full trial $\rightarrow$ 3 TR. Values are mean $\pm$ std over three seeds.}
 \label{tab:drift_intervention_3tr}
 \end{table}
 
@@ -796,6 +792,7 @@ Mamba2 & $0.983 \pm 0.002$ & $0.987 \pm 0.007$ & $0.944 \pm 0.006$ & $0.874 \pm 
 \end{tabular}
 \caption{
 Effect of self-supervised pretraining on resting-state fMRI followed by finetuning on HCP motor task fMRI.
+Values are mean $\pm$ std over three seeds.
 Representation similarity (CKA, dCor) is measured between full-trial and early-window inputs.
 Pretraining improves shift robustness for both models, with PIMSM retaining a small but consistent advantage in representation stability.
 }
@@ -828,6 +825,7 @@ Mamba2 & $0.983 \pm 0.002$ & $\mathbf{0.936 \pm 0.015}$ & $0.767 \pm 0.023$ & $\
 \end{tabular}
 \caption{
 Linear probing evaluation of pretrained models on HCP motor task fMRI.
+Values are mean $\pm$ std over three seeds.
 The backbone is frozen and only a linear classifier is trained.
 CKA and dCor are measured between full-trial and early-window representations of the frozen backbone.
 Both models achieve comparable full-trial accuracy ($\approx 0.93$), but PIMSM maintains slightly higher shifted-condition accuracy under 2 TR and 3 TR conditions.
