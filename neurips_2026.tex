@@ -170,7 +170,7 @@ Training on source condition $e$ minimizes empirical risk,
 \label{eq:erm_main}
 \end{equation}
 The central question is whether the learned encoder remains useful under $e'$ without shift-specific retraining or adaptation.
-We quantify representation drift between conditions via a geometry-aware discrepancy $\mathcal{D}$ (CKA or distance correlation dCor):
+We quantify representation drift between conditions via a geometry-aware discrepancy $\mathcal{D}$, instantiated with CKA~\citep{kornblith2019similarity} or distance correlation dCor~\citep{szekely2007measuring}:
 \begin{equation}
 \mathrm{Drift}(e,e') := \mathbb{E}_{x}\!\left[\mathcal{D}\!\left(z_e(x),\, z_{e'}(x)\right)\right],
 \label{eq:drift_def}
@@ -183,14 +183,14 @@ For Weather-5K, the same setup is used with a regression head and variable-wise 
 \section{Theory}
 \label{sec:theory}
 
-A single effective timescale implements a limited memory policy: fast updates track short-lived changes but amplify high-frequency fluctuations, while slow updates preserve context but can miss rapid task-relevant changes.
+A single effective timescale implements a limited memory policy: fast updates track short-lived changes but pass more high-frequency variation, while slow updates smooth fluctuations and preserve context at the cost of lag or missed rapid changes~\citep{oppenheim2010discrete,brown1959statistical}.
 When TR, context length, brain state, or station regime changes, the useful balance between slow and fast structure can shift, reconfiguring the latent geometry.
 PIMSM addresses this by maintaining multiple spectrum-derived memory policies rather than forcing one dominant kernel to serve all regimes.
 
-\subsection{Kernel mismatch intuition}
+\subsection{Kernel Mismatch Bound}
 \label{sec:theory:kernelbound}
 
-Many SSM-based encoders admit a locally linear convolutional view:
+Many SSM-based encoders admit a locally linear convolutional view~\citep{gu2022s4,gu2023mamba}:
 \begin{equation}
 h(t) \;=\; \int_{0}^{\infty} g(\tau)\, x(t-\tau)\, d\tau,
 \qquad
