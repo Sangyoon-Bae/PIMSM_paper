@@ -64,8 +64,11 @@
 \usepackage{amssymb}
 \usepackage{amsmath}
 \usepackage{amsthm}
-\setlength{\abovecaptionskip}{7pt}
-\setlength{\belowcaptionskip}{1pt}
+\setlength{\abovecaptionskip}{9pt}
+\setlength{\belowcaptionskip}{0pt}
+\setlength{\textfloatsep}{8pt plus 1pt minus 2pt}
+\setlength{\floatsep}{6pt plus 1pt minus 1pt}
+\setlength{\intextsep}{8pt plus 1pt minus 2pt}
 % hyperref must load after natbib (natbib is loaded by neurips_2025)
 \newtheorem{lemma}{Lemma}
 \newtheorem{proposition}{Proposition}
@@ -307,7 +310,7 @@ keeps the average decay scale near its initialization $a_0$. This prevents $A$ f
 
 \subsection{Multi-Scale State-Space Block}
 
-Each PIMSM block extends the Mamba-2 SSD kernel to a multi-scale setting because its multi-head SSM structure provides a natural unit for assigning different discretization parameters to different head groups. This makes Mamba-2 a convenient backbone for multi-scale temporal parameterization: PIMSM can introduce fast-to-slow temporal kernels by sharing $\Delta_k$ within each scale group, without substantially increasing the parameter count relative to a single-scale Mamba2 baseline. Heads within the same scale share $\Delta_k$ but maintain independent state transitions; using multiple heads per scale increases within-scale representational capacity while preserving the intended temporal hierarchy. The resulting scale-specific states are fused through lightweight cross-scale attention to model interactions among temporal scales. Full architectural equations and head counts are given in Appendix~\ref{sec:appx:arch_details}.
+Each PIMSM block extends the Mamba-2 Structured State Space Duality (SSD) kernel~\citep{dao2024transformers} to a multi-scale setting because its multi-head SSM structure provides a natural unit for assigning different discretization parameters to different head groups. This makes Mamba-2 a convenient backbone for multi-scale temporal parameterization: PIMSM can introduce fast-to-slow temporal kernels by sharing $\Delta_k$ within each scale group, without substantially increasing the parameter count relative to a single-scale Mamba2 baseline. Heads within the same scale share $\Delta_k$ but maintain independent state transitions; using multiple heads per scale increases within-scale representational capacity while preserving the intended temporal hierarchy. The resulting scale-specific states are fused through lightweight cross-scale attention to model interactions among temporal scales. Full architectural equations and head counts are given in Appendix~\ref{sec:appx:arch_details}.
 
 \subsection{Backbone, Prediction Head, and Training}
 \label{sec:methods:training}
