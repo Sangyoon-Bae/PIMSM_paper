@@ -151,7 +151,7 @@ Our main contributions are as follows:
 \item \textbf{Temporal-scale alignment as a practical foundation-model requirement.}
 We formulate temporal kernel mismatch as a diagnostic for when scientific time-series representations fail to preserve relevant physical timescales under acquisition, context, or domain shift.
 \item \textbf{Physics-informed multi-scale temporal parameterization.}
-We propose \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}, a structured multi-scale state-space architecture that derives scale-specific temporal kernels from spectrum-estimated knee frequencies and jointly regularizes discretization and state dynamics in acquisition time units, reducing $\Delta$--$A$ scale ambiguity.
+We propose \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}, a structured multi-scale state-space architecture that derives scale-specific temporal kernels from spectrum-estimated knee frequencies, expresses $\Delta$ in acquisition time units, and regularizes the $A$ scale to reduce $\Delta$--$A$ compensation.
 \item \textbf{Multi-axis robustness evaluation across neural and physical systems.}
 We evaluate PIMSM under diverse structured shifts across neural and meteorological time series, showing that physics-informed multi-scale temporal structure improves robustness without shift-specific adaptation.
 \end{itemize}
@@ -300,7 +300,7 @@ A hierarchical constraint $\Delta_1 \ge \Delta_2 \ge \Delta_3$ enforces temporal
 \label{alg:spectrum_to_delta}
 \end{table}
 
-\textbf{Acquisition-unit anchoring.} The SSM transition depends on the product of the discretization step and the continuous-time state matrix (e.g., $\exp(\Delta A)$), so $\Delta$ and $A$ can compensate for one another if both are left unconstrained. PIMSM separates these roles by anchoring them from both sides. First, the spectrum-to-delta map expresses each $\Delta_k$ in dataset-native acquisition units and applies a log-scale regularizer to discourage arbitrary rescaling. Second, the continuous-time decay is initialized as $A=-\exp(A_{\log})$ with $A\approx -1/\tau$ and $\tau$ sampled from a log-uniform acquisition-time range. During training, an $A$-scale penalty
+\textbf{Acquisition-unit anchoring.} The SSM transition depends on the product of the discretization step and the continuous-time state matrix (e.g., $\exp(\Delta A)$), so $\Delta$ and $A$ can compensate for one another if both are left unconstrained. PIMSM separates these roles by expressing $\Delta$ in acquisition units while constraining the scale of $A$. First, the spectrum-to-delta map expresses each $\Delta_k$ in dataset-native acquisition units and applies a log-scale regularizer to discourage arbitrary rescaling. Second, the continuous-time decay is initialized as $A=-\exp(A_{\log})$ with $A\approx -1/\tau$ and $\tau$ sampled from a log-uniform acquisition-time range. During training, an $A$-scale penalty
 \[
 \mathcal{L}_{A}
 = \left(\log \overline{|A|} - \log a_0\right)^2,
@@ -500,13 +500,13 @@ MS-SSM~\citep{Karami2025MSSSMAM} processes multiple resolutions with specialized
 ms-Mamba~\citep{karadag2025ms} uses multiple Mamba blocks with different sampling rates to model forecasting signals at several temporal scales.
 STM3~\citep{chen2025stm3} targets long-term spatio-temporal prediction with multiscale Mamba experts, adaptive graph causal convolution, and mixture-of-experts routing.
 WMF-Traffic~\citep{li2025multi} combines wavelet decomposition, traffic-aware Mamba, and Fourier adjustment for traffic forecasting.
-PIMSM differs from these scale-by-design approaches by deriving scale-specific discretization from empirical spectra, enforcing an ordered temporal hierarchy through knee frequencies and energy-weighted representative frequencies, and anchoring both $\Delta$ and $A$ in dataset-native acquisition units.
+PIMSM differs from these scale-by-design approaches by deriving scale-specific discretization from empirical spectra, enforcing an ordered temporal hierarchy through knee frequencies and energy-weighted representative frequencies, and constraining $A$ so that spectrum-derived $\Delta$ remains interpretable in dataset-native acquisition units.
 Because several concurrent multi-scale SSM/Mamba variants either lack mature public implementations or target different benchmarks, our primary comparisons use parameter-matched, widely established backbones (Mamba2, Transformer, and 1D-CNN); the related models position the design space rather than serve as reimplemented baselines.
 
 \section{Discussion}
 \label{sec:discussion}
 
-PIMSM supports temporal-scale alignment as a practical inductive bias for scientific sequence models. By coupling spectrum-derived knees to scale-specific $\Delta$ values and anchoring both $\Delta$ and $A$ in acquisition units, the backbone learns a memory policy tied to the signal's physical organization rather than to a split-specific hyperparameter setting.
+PIMSM supports temporal-scale alignment as a practical inductive bias for scientific sequence models. By coupling spectrum-derived knees to scale-specific $\Delta$ values and regularizing $A$ to prevent compensatory rescaling, the backbone learns a memory policy tied to the signal's physical organization rather than to a split-specific hyperparameter setting.
 
 This matters when supervision is weak, observation is short, or deployment state changes. The HCP experiments cover early-window decoding, scarce labels, and resting-state$\rightarrow$task transfer; Weather-5K shows that the same spectrum-to-memory mechanism applies outside neuroimaging. The stronger gains at longer weather horizons are consistent with spectrum-derived scale assignment allocating memory across empirical slow and fast regimes, beyond simply using a long-memory Mamba backbone.
 
@@ -540,7 +540,7 @@ where:
     \item $\mathcal{L}_{\mathrm{hyp}}$: auxiliary spectral alignment loss ($w_{\mathrm{hyp}} = 0.3$);
     \item $\mathcal{L}_{\beta}$: extreme-$\beta$ regularization penalizing exponents approaching $[0.3, 5.0]$ boundaries ($\lambda_{\beta} = 0.5$).
 \end{itemize}
-The joint anchoring of $\Delta$, $\tau$-initialization of $A$, and $\mathcal{L}_A$ constitute the default PIMSM protocol across all experiments unless an ablation removes a component.
+The acquisition-unit anchoring of $\Delta$, $\tau$-initialization of $A$, and $\mathcal{L}_A$ constitute the default PIMSM protocol across all experiments unless an ablation removes a component.
 
 \section{Architecture Details}
 \label{sec:appx:arch_details}
