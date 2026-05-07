@@ -239,15 +239,34 @@ Appendix~\ref{sec:appx:kernel_approx} gives a complementary approximation view f
 \includegraphics[width=\linewidth]{figures/PIMSM_Fig1.pdf}
 \caption{
 \textbf{Physics-informed multi-scale parameterization of temporal dynamics.}
-\textbf{(a)} SpectralHyperNet estimates spectral regimes from the input and uses them to parameterize a multi-scale SSM, whose scale-specific states interact through cross-scale attention.
-\textbf{(b1--b3)} Piecewise spectral structure is mapped to ordered discretization parameters ($\Delta_1 \ge \Delta_2 \ge \Delta_3$), inducing fast-to-slow temporal kernels.
+\textbf{(a)} SpectralHyperNet computes the input PSD, estimates knee frequencies and spectral exponents, and fits a piecewise power-law PSD.
+\textbf{(b1--b3)} The knees partition the frequency axis, not the time series; an energy-weighted representative frequency from each regime is mapped to ordered discretization parameters ($\Delta_1 \ge \Delta_2 \ge \Delta_3$) for fast-to-slow SSM heads, whose states interact through cross-scale attention.
 }
 \label{fig:architecture_multiscale}
 \end{figure}
 
-PIMSM integrates multi-scale temporal structure into a state-space framework without relying on modality-specific components. As shown in Fig.~\ref{fig:architecture_multiscale}, the model first analyzes the input sequence in the frequency domain to infer the spectral regimes that organize the signal. These inferred regimes are then converted into scale-specific SSM parameters, so different groups of SSM heads implement distinct lag-weighting profiles rather than sharing a single dominant memory scale. The resulting scale-specific latent states are passed through lightweight cross-scale attention to model interactions among temporal scales, allowing fast and slow temporal evidence to modulate one another before prediction. Given an input time series $\mathbf{x}_{1:T} \in \mathbb{R}^d$, the fused representation is pooled over time and passed to a task-specific head for classification or forecasting.
+PIMSM integrates multi-scale temporal structure into a state-space framework without relying on modality-specific components. As shown in Fig.~\ref{fig:architecture_multiscale}, the model first computes the power spectral density (PSD) of the input sequence and uses SpectralHyperNet to estimate knee frequencies $(f_1,f_2)$ and scaling exponents $(\beta_1,\beta_2,\beta_3)$. These parameters define a differentiable piecewise power-law approximation to the observed PSD, and the spectral fit loss compares the reconstructed piecewise PSD against the original PSD. The knees then partition the frequency axis into three regimes, corresponding to slow, intermediate, and fast temporal structure.
 
-The SpectralHyperNet estimates knee frequencies $(f_1, f_2)$ and scaling exponents from the power spectral density, defining a finite set of characteristic frequency regimes. For each regime, a center frequency $f_{c,k}$ is mapped to a discretization parameter through a monotonic transformation, linking spectral structure to temporal update dynamics in physical time units. Higher-frequency regimes induce larger update steps and faster kernels, while lower-frequency regimes preserve longer memory. By tying discretization to spectrum-derived scales, PIMSM induces a hierarchy of lag-weighting profiles that align with observed frequency regimes, reducing temporal-kernel mismatch under structured shifts.
+For each spectral regime, PIMSM computes an energy-weighted representative frequency $f_{c,k}$ under the fitted power-law slope rather than using a fixed band midpoint. This representative frequency is mapped through a monotonic frequency-to-discretization transformation to produce a scale-specific SSM timestep $\Delta_k$, with higher representative frequencies assigned larger $\Delta$ and lower representative frequencies assigned smaller $\Delta$. Importantly, this procedure does not split or filter the input time series; the knee and exponent estimates only determine the scale-specific $\Delta_k$ values. Groups of SSM heads share the same $\Delta_k$, so each group implements a distinct lag-weighting profile while processing the original time-domain sequence, reducing temporal-kernel mismatch under structured shifts. The resulting scale-specific latent states are passed through lightweight cross-scale attention to model interactions among temporal scales, allowing fast and slow temporal evidence to modulate one another before the pooled representation is passed to a task-specific head for classification or forecasting.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{p{0.96\linewidth}}
+\toprule
+\textbf{Algorithm 1: Spectrum-to-$\Delta$ parameterization in PIMSM} \\
+\midrule
+\textbf{Input:} time-domain sequence $x_{1:T}$ for the SSM backbone; spectral context $x^{\mathrm{spec}}$ (the same sequence by default, or a longer full-trial/full-run context in early-window HCP experiments); frequency bounds $[f_{\min}, f_{\max}]$; number of scales $K=3$. \\
+\textbf{1. PSD estimation:} compute $P(f)=|\mathrm{FFT}(x^{\mathrm{spec}})|^2$ over non-DC frequencies in $[f_{\min}, f_{\max}]$. \\
+\textbf{2. Piecewise spectral fit:} SpectralHyperNet predicts knees $(f_1,f_2)$ and exponents $(\beta_1,\beta_2,\beta_3)$; a differentiable piecewise power-law $\hat P(f)\propto f^{-\beta_k}$ is fit to $P(f)$ with spectral-fit and seam-continuity losses. \\
+\textbf{3. Representative frequencies:} the knees define frequency bands $[f_{\min},f_1]$, $[f_1,f_2]$, and $[f_2,f_{\max}]$; for each band, compute $f_{c,k}=\int fP_k(f)df/\int P_k(f)df$ under the fitted exponent $\beta_k$. \\
+\textbf{4. Delta mapping:} map each $f_{c,k}$ to a scale-specific timestep $\Delta_k$ using $\Delta_k \propto f_{c,k}$; in the default implementation, $m_k=p_k(1-w)+w\,t_k$ with $w=0.3$ and $\Delta_k=\Delta_{\min}+(\Delta_{\max}-\Delta_{\min})m_k$, followed by the ordered constraint $\Delta_1\ge\Delta_2\ge\Delta_3$. \\
+\textbf{5. Time-domain SSM processing:} process the original sequence $x_{1:T}$ without splitting or filtering it; SSM heads assigned to scale $k$ share $\Delta_k$, and their scale-specific states interact through cross-scale attention before prediction. \\
+\bottomrule
+\end{tabular}
+\caption{Operational summary of the PIMSM spectrum-to-dynamics mapping.}
+\label{alg:spectrum_to_delta}
+\end{table}
 
 \subsection{Datasets}
 \label{sec:methods:data}
