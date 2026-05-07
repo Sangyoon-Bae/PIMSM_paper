@@ -257,16 +257,12 @@ Full dataset details and preprocessing are in Appendix~\ref{sec:appx:data}.
 
 \subsection{SpectralHyperNet: Spectrum-Guided Scale Inference}
 
-Following~\citet{bae2025spatiotemporal}, we model the BOLD power spectral density as a piecewise power-law across configurable frequency regimes; the main experiments use the default $K=3$ setting (ultra-low, low, high), separated by knee frequencies $(f_1, f_2)$.
+We model the power spectral density of each multivariate time series as a piecewise power-law across configurable frequency regimes, following frequency-resolved modeling of multiscale fMRI dynamics~\citep{bae2025spatiotemporal} but applying the same procedure to both neural and meteorological signals. The main experiments use the default $K=3$ setting, separated by knee frequencies $(f_1, f_2)$.
 We empirically verify this piecewise structure across datasets and domains in Appendix~\ref{sec:appx:psd_multifractal}.
 
-\textbf{Spectral modeling.} Given the full sequence, we estimate the power spectral density $P(f)$ via FFT. In HCP motor experiments, SpectralHyperNet receives the full trial for spectral calibration while the SSM backbone receives only the first 3 or 2 TRs, testing whether full-sequence spectral structure stabilizes shortened task evidence rather than simulating a changed scanner TR. We assume a multi-scale power-law structure:
-\begin{equation}
-P(f) \propto f^{-\beta_k}, \quad f \in [f_{k-1}, f_k], \quad k = 1,\dots,K,
-\end{equation}
-where $(f_1, f_2)$ are the default two knee frequencies separating three frequency regimes.
+\textbf{Spectral modeling.} Given a spectral context sequence $x^{\mathrm{spec}}$, we estimate the power spectral density $P(f)$ via FFT and fit the piecewise power-law form in Eq.~\eqref{eq:piecewise_powerlaw}. By default, $x^{\mathrm{spec}}$ is the same sequence processed by the SSM backbone; in HCP early-window experiments, SpectralHyperNet instead receives the full trial for spectral calibration while the SSM backbone receives only the first 3 or 2 TRs. This experiment-specific choice tests whether full-sequence spectral structure stabilizes shortened task evidence, and does not simulate a changed scanner TR. In the default $K=3$ setting, $(f_1, f_2)$ denote the two knee frequencies separating three regimes.
 
-\textbf{Knee estimation.} SpectralHyperNet predicts $(f_1, f_2)$ and exponents $(\beta_1, \beta_2, \beta_3)$ from the full-sequence spectrum, initialized from a data-driven scipy fit on the first training batch. A multi-resolution MAE spectral fit loss drives knee placement and a seam loss encourages piecewise continuity; hyperparameters are in Appendix~\ref{sec:appx:training_details}.
+\textbf{Knee estimation.} SpectralHyperNet predicts the $K-1$ knee frequencies and $K$ scaling exponents from the spectrum, initialized from a data-driven scipy fit on the first training batch. A multi-resolution MAE spectral fit loss drives knee placement and a seam loss encourages piecewise continuity; hyperparameters are in Appendix~\ref{sec:appx:training_details}.
 
 \textbf{Energy-weighted center frequency and discretization mapping.} For each band $k$, we compute an energy-weighted center frequency $f_{c,k}$ under $P(f) \propto f^{-\beta}$, giving a representative frequency that reflects spectral mass rather than a simple geometric mean.
 
@@ -294,7 +290,14 @@ A hierarchical constraint $\Delta_1 \ge \Delta_2 \ge \Delta_3$ enforces temporal
 \label{alg:spectrum_to_delta}
 \end{table}
 
-\textbf{Acquisition-unit anchoring.} To reduce $\Delta$--$A$ scale non-identifiability, $\Delta_k$ is expressed in dataset-native time units with log-scale regularization, while $A$ is initialized and regularized to prevent compensatory rescaling. This pins $\tau_\text{eff} \approx \Delta/(-A)$ from both sides; implementation details are in Appendix~\ref{sec:appx:arch_details}.
+\textbf{Acquisition-unit anchoring.} The SSM transition depends on the product of the discretization step and the continuous-time state matrix (e.g., $\exp(\Delta A)$), so $\Delta$ and $A$ can compensate for one another if both are left unconstrained. PIMSM separates these roles by anchoring them from both sides. First, the spectrum-to-delta map expresses each $\Delta_k$ in dataset-native acquisition units and applies a log-scale regularizer to discourage arbitrary rescaling. Second, the continuous-time decay is initialized as $A=-\exp(A_{\log})$ with $A\approx -1/\tau$ and $\tau$ sampled from a log-uniform acquisition-time range. During training, an $A$-scale penalty
+\[
+\mathcal{L}_{A}
+= \left(\log \overline{|A|} - \log a_0\right)^2,
+\qquad
+\overline{|A|}=\mathrm{mean}_j\,\exp(A_{\log,j}),
+\]
+keeps the average decay scale near its initialization $a_0$. This prevents $A$ from simply rescaling to undo the spectrum-derived $\Delta_k$, making the induced effective timescales $\tau_{\mathrm{eff}}\approx \Delta/|A|$ more identifiable in physical time units. Implementation details are in Appendix~\ref{sec:appx:arch_details}.
 
 \subsection{Multi-Scale State-Space Block}
 
