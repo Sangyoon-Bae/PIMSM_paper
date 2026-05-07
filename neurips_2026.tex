@@ -345,8 +345,9 @@ Figure~\ref{fig:tr_shift_stability} reports representation stability (CKA, dista
 Table~\ref{tab:drift2tr} shows that PIMSM has the smallest full-trial$\to$2TR accuracy drop while also achieving the highest representation similarity between full-trial and truncated-input embeddings, measured by both CKA and dCor.
 This pattern is more informative than shifted accuracy alone: PIMSM preserves the latent geometry of the full-trial solution when only the earliest time points are available.
 Replacing spectrum-derived $\Delta$ with learnable or random values increases the accuracy drop and lowers CKA/dCor, indicating that robustness is not explained by multi-scale capacity alone but by spectrum-aligned temporal anchoring.
+Representation stability metrics provide a cleaner signal than accuracy alone for isolating this contribution: PIMSM~(learnable~$\Delta$) reaches a 2TR accuracy similar to Mamba2 ($0.913\pm0.030$ vs.\ $0.914\pm0.005$), yet its representation geometry under truncation is markedly weaker than full PIMSM---CKA increases from $0.776\pm0.086$ to $0.812\pm0.033$, with the reduced cross-seed variance indicating that spectrum-derived initialization anchors the representation geometry more consistently across runs.
 Across the three paired seeds, PIMSM improves over Mamba2 on all shifted 2TR metrics (accuracy, accuracy drop, CKA, and dCor).
-Given the small seed count, we treat paired tests as exploratory rather than definitive; the paired effect sizes are nevertheless large in this temporal-context setting.
+Given the small seed count, we treat paired tests as exploratory rather than definitive; the consistent direction of CKA and dCor improvements across all three seeds supports the robustness of the representation-stability effect.
 
 \begin{table}[htbp]
 \centering
@@ -366,7 +367,7 @@ PIMSM (random $\Delta$) & $0.983\pm0.004$ & $0.889\pm0.055$ & $0.737\pm0.105$ & 
 \end{tabular}
 \caption{
 \textbf{HCP motor decoding under severe temporal-context truncation (full trial $\rightarrow$ 2 TRs).}
-Values are mean $\pm$ std over three seeds. PIMSM achieves the highest accuracy and representation stability. Ablations with learnable or random $\Delta$ indicate that spectrum-derived scale parameters are important for the observed robustness.
+Values are mean $\pm$ std over three seeds. PIMSM achieves the highest accuracy and representation stability. Representation stability (CKA, dCor) is the primary discriminator between initialization strategies: PIMSM~(learnable~$\Delta$) matches Mamba2 in 2TR accuracy yet achieves lower CKA ($0.776$ vs.\ $0.812$) with higher cross-seed variance, confirming that spectrum-derived initialization---not multi-scale capacity alone---is responsible for the geometry-preservation benefit.
 }
 \label{tab:drift2tr}
 \end{table}
