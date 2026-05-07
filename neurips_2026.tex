@@ -139,7 +139,7 @@ To explicitly model these regimes in the time domain, a sequence backbone needs 
 
 Based on this observation, we introduce \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}. PIMSM reframes temporal-scale alignment as an architectural requirement: it replaces a fully unconstrained temporal parameterization with a spectrum-guided hierarchy of kernels whose scales are anchored to acquisition time. Rather than treating multi-scale structure as an external preprocessing step, PIMSM uses the observed spectral hierarchy to parameterize the state-space dynamics.
 
-Our central hypothesis is that kernels aligned to the multiscale organization of the data capture a more reusable dynamical structure, reducing representation drift and performance degradation when the observation context changes. We test this hypothesis across four axes of structured distribution shift spanning neural and meteorological domains: temporal-context truncation and low-resource generalization on HCP motor fMRI, brain-state shift (resting-state $\to$ task fMRI), and cross-domain transfer to Weather-5K spatial out-of-distribution (OOD) forecasting without adaptation. These axes map to practical deployment stresses: low-latency neural decoding, scarce task labels, abundant resting-state but limited task-fMRI data, and long-horizon forecasting at geographically held-out stations. The Weather-5K axis deliberately changes both modality and deployment geography, testing whether a spectrum-to-dynamics prior learned as an architectural principle rather than a domain-specific module remains useful outside neuroimaging. On HCP, PIMSM improves robustness and representation stability over parameter-matched single-scale baselines; on Weather-5K, it gives consistent variable-wise gains across forecasting horizons.
+Our central hypothesis is that kernels aligned to the multiscale organization of the data capture a more reusable dynamical structure, reducing representation drift and performance degradation when the observation context changes. We test this hypothesis under multiple structured shifts spanning neural and meteorological domains, including shortened neural observation windows, scarce task labels, brain-state transfer, and geographically held-out weather stations. This evaluation deliberately changes both modality and deployment context, testing whether a spectrum-to-dynamics prior learned as an architectural principle rather than a domain-specific module remains useful outside neuroimaging. On HCP, PIMSM improves robustness and representation stability over parameter-matched single-scale baselines; on Weather-5K, it gives consistent variable-wise gains across forecasting horizons.
 
 Our main contributions are as follows:
 
@@ -149,7 +149,7 @@ We formulate temporal kernel mismatch as a diagnostic for when scientific time-s
 \item \textbf{Physics-informed multi-scale temporal parameterization.}
 We propose \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}, a structured multi-scale state-space architecture that derives scale-specific temporal kernels from spectrum-estimated knee frequencies and jointly regularizes discretization and state dynamics in acquisition time units, reducing $\Delta$--$A$ scale ambiguity.
 \item \textbf{Multi-axis robustness evaluation across neural and physical systems.}
-We evaluate PIMSM across temporal-context truncation, low-resource transfer, brain-state shift, and cross-domain forecasting (Weather-5K spatial OOD with held-out stations), showing that physics-informed multi-scale temporal structure improves robustness across both neural and meteorological time series without shift-specific adaptation.
+We evaluate PIMSM under diverse structured shifts across neural and meteorological time series, showing that physics-informed multi-scale temporal structure improves robustness without shift-specific adaptation.
 \end{itemize}
 
 
@@ -161,7 +161,7 @@ A structured shift $e \to e'$ alters the temporal statistics of $x_{1:T} \in \ma
 Thus the labels or forecasting targets are fixed, but the temporal evidence, supervision budget, state, or station domain available at deployment changes.
 We evaluate four axes: \textbf{Axis (i)} temporal-context truncation of task trials with full-sequence spectral calibration; \textbf{Axis (ii)} low-resource transfer; \textbf{Axis (iii)} brain-state shift (resting $\leftrightarrow$ task); and \textbf{Axis (iv)} Weather-5K spatial out-of-distribution (OOD) forecasting on held-out stations.
 
-The central object in this setting is the temporal weighting profile induced by the encoder, not a modified loss function.
+The central object in this setting is the temporal weighting profile induced by the encoder.
 Given a multivariate time series $x_{1:T}$, a temporal encoder $\Phi_{\theta}$ induces condition-dependent latent states
 \begin{equation}
 h_{1:T}^{(e)}=\Phi_{\theta}^{\tilde g_e}(x_{1:T}),
@@ -259,7 +259,7 @@ Full dataset details and preprocessing are in Appendix~\ref{sec:appx:data}.
 
 \subsection{SpectralHyperNet: Spectrum-Guided Scale Inference}
 
-We model the power spectral density of each multivariate time series as a piecewise power-law across configurable frequency regimes, following frequency-resolved modeling of multiscale fMRI dynamics~\citep{bae2025spatiotemporal} but applying the same procedure to both neural and meteorological signals. The main experiments use the default $K=3$ setting, separated by knee frequencies $(f_1, f_2)$.
+We model the power spectral density of each multivariate time series using the piecewise power-law form in Eq.~\eqref{eq:piecewise_powerlaw}, with a configurable number of frequency regimes. The main experiments use the default $K=3$ setting, separated by knee frequencies $(f_1, f_2)$.
 We empirically verify this piecewise structure across datasets and domains in Appendix~\ref{sec:appx:psd_multifractal}.
 
 \textbf{Spectral modeling.} Given a spectral context sequence $x^{\mathrm{spec}}$, we estimate the power spectral density $P(f)$ via FFT and fit the piecewise power-law form in Eq.~\eqref{eq:piecewise_powerlaw}. By default, $x^{\mathrm{spec}}$ is the same sequence processed by the SSM backbone; in HCP early-window experiments, SpectralHyperNet instead receives the full trial for spectral calibration while the SSM backbone receives only the first 3 or 2 TRs. This experiment-specific choice tests whether full-sequence spectral structure stabilizes shortened task evidence, and does not simulate a changed scanner TR. In the default $K=3$ setting, $(f_1, f_2)$ denote the two knee frequencies separating three regimes.
