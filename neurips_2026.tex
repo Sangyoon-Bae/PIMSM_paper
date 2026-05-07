@@ -136,7 +136,7 @@ This issue is concrete in state-space models (SSMs). In Mamba-style selective SS
 
 Based on this observation, we introduce \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}. PIMSM reframes temporal-scale alignment as an architectural requirement: it replaces a fully unconstrained temporal parameterization with a spectrum-guided hierarchy of kernels whose scales are anchored to acquisition time. Rather than treating multi-scale structure as an external preprocessing step, PIMSM uses the observed spectral hierarchy to parameterize the state-space dynamics.
 
-We evaluate PIMSM across four axes of structured distribution shift spanning neural and meteorological domains: temporal-context truncation and low-resource generalization on HCP motor fMRI, brain-state shift (resting-state $\to$ task fMRI), and cross-domain transfer to Weather-5K spatial OOD forecasting without adaptation. This last axis deliberately changes both modality and deployment geography: models are trained on one set of weather stations and evaluated on geographically held-out stations, testing whether a spectrum-to-dynamics prior learned as an architectural principle rather than a domain-specific module remains useful outside neuroimaging. On HCP, PIMSM improves robustness and representation stability over parameter-matched single-scale baselines; on Weather-5K, it gives consistent variable-wise gains across forecasting horizons.
+We evaluate PIMSM across four axes of structured distribution shift spanning neural and meteorological domains: temporal-context truncation and low-resource generalization on HCP motor fMRI, brain-state shift (resting-state $\to$ task fMRI), and cross-domain transfer to Weather-5K spatial OOD forecasting without adaptation. These axes map to practical deployment stresses: low-latency neural decoding, scarce task labels, abundant resting-state but limited task-fMRI data, and long-horizon forecasting at geographically held-out stations. The Weather-5K axis deliberately changes both modality and deployment geography, testing whether a spectrum-to-dynamics prior learned as an architectural principle rather than a domain-specific module remains useful outside neuroimaging. On HCP, PIMSM improves robustness and representation stability over parameter-matched single-scale baselines; on Weather-5K, it gives consistent variable-wise gains across forecasting horizons.
 
 Our main contributions are as follows:
 
@@ -285,7 +285,7 @@ All models are trained under a shared protocol with matched parameter budgets ac
 
 \section{Results}\label{sec:results}
 
-We evaluate PIMSM across four axes of structured distribution shift. Axes (i--ii) use HCP motor fMRI; axis (iii) uses HCP resting-state$\to$task fMRI; axis (iv) uses Weather-5K spatial OOD forecasting. All comparisons use parameter-matched baselines (Mamba2, Transformer, 1D-CNN; $\approx$7.85M parameters each).
+We evaluate PIMSM across four deployment-motivated axes of structured distribution shift. Axes (i--ii) use HCP motor fMRI; axis (iii) uses HCP resting-state$\to$task fMRI; axis (iv) uses Weather-5K spatial OOD forecasting. All comparisons use parameter-matched baselines (Mamba2, Transformer, 1D-CNN; $\approx$7.85M parameters each).
 
 \subsection{Axis (i): Temporal-Context Shift --- HCP Motor Early-Window Truncation}
 \label{sec:results:hcp_tr_shift}
@@ -304,6 +304,7 @@ We evaluate PIMSM across four axes of structured distribution shift. Axes (i--ii
 
 We assess robustness to temporal-context shift by truncating the SSM backbone input for each motor trial to the first 3 or 2 TRs, simulating severe early-window decoding while preserving task labels and subject identity.
 SpectralHyperNet still receives the full trial sequence to estimate the spectral hierarchy used for scale calibration; therefore this experiment isolates whether full-sequence spectral structure can stabilize representations when downstream task evidence is temporally shortened, rather than simulating a changed scanner TR.
+This setting is directly relevant to low-latency brain-computer interfaces and closed-loop neurotechnology, where decisions must often be made from the earliest available neural evidence rather than from full trials.
 Figure~\ref{fig:tr_shift_stability} reports representation stability (CKA, distance correlation dCor between full-trial and truncated-input representations) alongside decoding accuracy.
 
 \paragraph{Full trial $\rightarrow$ 2 TRs (severe truncation).}
@@ -345,6 +346,7 @@ Explicit drift regularization on Mamba2 improves stability without degrading ID 
 \label{sec:results:data_scarce}
 
 Table~\ref{tab:data_scarce} reports motor decoding accuracy as labeled training data varies from 1\% to 100\%.
+This setting reflects a common neuroimaging deployment constraint: task-fMRI labels are expensive and often scarce, so useful models must adapt from very small labeled cohorts.
 At 1\% data, PIMSM achieves $0.797\pm0.040$, compared with Mamba2 ($0.752$), Transformer ($0.774$), and 1D-CNN ($0.709$).
 Differences diminish beyond 10\%, and Transformer is strongest at 5\%, indicating that physics-informed multi-scale dynamics primarily improve sample efficiency in the most extreme low-supervision regime rather than uniformly dominating all label budgets.
 Pretraining on resting-state fMRI further improves robustness; linear probing results are reported in Appendix~\ref{sec:appx:pretrain}.
@@ -374,6 +376,7 @@ PIMSM performs best in the extreme low-data regime (1\%).
 \label{sec:results:brainstateshift}
 
 We train on HCP resting-state fMRI for sex classification and evaluate the same task label on motor-task fMRI without adaptation, testing whether temporal kernels learned from spontaneous dynamics remain useful under task-evoked acquisition state.
+This matches a practical asymmetry in neuroimaging: resting-state scans are broadly available, whereas task-fMRI labels and paradigms are often more limited and heterogeneous.
 We do not report CKA/dCor for Axis (iii) because resting-state and task-fMRI are not paired observations of the same input under two temporal conditions; cross-condition similarity would conflate representation stability with differences in behavioral state and sequence content.
 PIMSM achieves the highest accuracy and substantially lower cross-seed variance (Table~\ref{tab:brainstateshift}), suggesting reduced sensitivity to resting$\leftrightarrow$task reconfiguration in this setting rather than only a higher mean score.
 
@@ -406,6 +409,7 @@ We evaluate whether the same spectrum-guided temporal parameterization transfers
 Weather-5K is a substantially different modality and sampling regime from fMRI, with hourly station measurements and heterogeneous target units; Table~\ref{tab:weather} therefore reports variable-wise MAE under the held-out-station spatial OOD split.
 Across forecasting horizons, PIMSM attains the lowest MAE on all 24 variable-horizon endpoints, including scalar meteorological variables (TMP, SLP, DEW), wind rate, and both wind-angle components.
 Against the best non-PIMSM baseline for each endpoint, PIMSM reduces MAE by 15.2\% on average, with larger gains at longer horizons (11.4\% at 24h versus 17.9\% at 168h).
+The widening margin at longer horizons is consistent with the intended real-world setting: robust forecasting under station shift increasingly depends on preserving longer-range temporal structure rather than fitting short-horizon local patterns alone.
 This result supports the interpretation that PIMSM is not simply an fMRI-specific architecture, but a modality-agnostic mechanism for aligning SSM memory scales to empirical temporal structure.
 \begin{table}[htbp]
 \centering
@@ -467,7 +471,7 @@ The current experiments test temporal-context truncation rather than a scanner-l
 
 We introduced \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}, motivated by the hypothesis that temporal-kernel alignment is important for generalization in multiscale physical signals. By coupling discretization parameters to spectrum-derived knee frequencies and jointly anchoring both $\Delta$ and $A$ in acquisition time units, PIMSM constructs a structured multi-scale kernel family for temporal-context, brain-state, and cross-domain shifts.
 
-On completed HCP experiments, PIMSM improves robustness over parameter-matched single-scale baselines under severe temporal-context truncation, extreme low-resource transfer, and resting-state$\to$task-state generalization. Weather-5K spatial OOD results show that the same spectrum-guided temporal parameterization extends to meteorological forecasting across held-out stations without modality-specific adaptation. Together, these results support the view that robust sequence modeling of multiscale physical signals benefits from architectural alignment with the intrinsic temporal organization of the underlying dynamical system.
+On completed HCP experiments, PIMSM improves robustness over parameter-matched single-scale baselines under severe temporal-context truncation, extreme low-resource transfer, and resting-state$\to$task-state generalization. Weather-5K spatial OOD results show that the same spectrum-guided temporal parameterization extends to meteorological forecasting across held-out stations without modality-specific adaptation, with larger gains at longer horizons. Together, these results position temporal-scale alignment as a practical criterion for scientific foundation models that must operate under short observation windows, scarce labels, state shifts, and cross-domain deployment.
 
 
 \newpage
