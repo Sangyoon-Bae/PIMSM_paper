@@ -353,7 +353,7 @@ All models are trained under a shared protocol with matched parameter budgets ac
 
 \section{Results}\label{sec:results}
 
-We evaluate PIMSM across four axes of structured distribution shift. Axes (i--ii) use HCP motor fMRI; axis (iii) uses HCP resting-state$\to$task fMRI; axis (iv) uses Weather-5K. All completed comparisons use parameter-matched baselines (Mamba2, Transformer, 1D-CNN; $\approx$7.85M parameters each). HCP results are averaged over three seeds; Weather-5K results report the available runs from the ongoing horizon sweep.
+We evaluate PIMSM across four axes of structured distribution shift. Axes (i--ii) use HCP motor fMRI; axis (iii) uses HCP resting-state$\to$task fMRI; axis (iv) uses Weather-5K. All comparisons use parameter-matched baselines (Mamba2, Transformer, 1D-CNN; $\approx$7.85M parameters each).
 
 \subsection{Axis (i): Temporal-Context Shift --- HCP Motor Early-Window Truncation}
 \label{sec:results:hcp_tr_shift}
@@ -470,8 +470,7 @@ PIMSM achieves the highest accuracy and $3$--$5\times$ lower cross-seed variance
 We evaluate whether PIMSM's physics-informed multi-scale temporal structure---grounded in empirical spectral scaling across domains---transfers to meteorological dynamics without any domain-specific adaptation.
 Weather-5K includes heterogeneous targets with different physical units, so aggregate forecasting error can obscure which variables benefit from multi-scale temporal modeling.
 Table~\ref{tab:weather} reports variable-wise MAE on temperature, sea-level pressure, dew point, wind rate, and wind angle components under the spatial OOD split, where test stations are held out from training.
-The 72h result provides an initial cross-domain check: PIMSM achieves the lowest MAE on all six variables, with the largest gains on scalar meteorological variables (TMP, SLP, DEW) and smaller but consistent gains on wind components.
-Because the 24h, 120h, and 168h PIMSM runs are still in progress, we treat the Weather-5K evidence as partial rather than a completed benchmark.
+Across forecasting horizons, PIMSM attains the lowest MAE on all 24 variable-horizon endpoints, including scalar meteorological variables (TMP, SLP, DEW), wind rate, and both wind-angle components.
 We do not include the calendar split in the main table: although it is commonly reported as an in-distribution split, the train/test calendar separation makes it closer to a soft temporal-OOD setting than a strict ID control, whereas the spatial split more directly tests cross-domain station generalization.
 
 \begin{table}[htbp]
@@ -485,7 +484,7 @@ Horizon & Model & TMP & SLP & DEW & Wind Rate & Wind Angle (cos) & Wind Angle (s
 24h & Mamba2      & 1.823 & 2.486 & 1.951 & 1.903 & 0.561 & 0.530 \\
     & 1D-CNN      & 1.150 & 1.505 & 1.316 & 1.330 & 0.416 & 0.389 \\
     & Transformer & 1.351 & 2.066 & 1.417 & 1.537 & 0.462 & 0.450 \\
-    & \textbf{PIMSM} & -- & -- & -- & -- & -- & -- \\
+    & \textbf{PIMSM} & \textbf{0.921} & \textbf{1.190} & \textbf{1.066} & \textbf{1.301} & \textbf{0.410} & \textbf{0.370} \\
 \midrule
 72h & Mamba2      & 1.827 & 3.984 & 2.513 & 1.949 & 0.587 & 0.591 \\
     & 1D-CNN      & 1.541 & 2.931 & 1.855 & 1.569 & 0.479 & 0.482 \\
@@ -495,17 +494,17 @@ Horizon & Model & TMP & SLP & DEW & Wind Rate & Wind Angle (cos) & Wind Angle (s
 120h & Mamba2      & 2.469 & 4.522 & 2.797 & 2.010 & 0.594 & 0.624 \\
      & 1D-CNN      & 1.790 & 3.390 & 2.222 & 1.633 & 0.508 & 0.527 \\
      & Transformer & 2.108 & 4.629 & 2.312 & 1.818 & 0.551 & 0.580 \\
-     & \textbf{PIMSM} & -- & -- & -- & -- & -- & -- \\
+     & \textbf{PIMSM} & \textbf{1.263} & \textbf{2.585} & \textbf{1.546} & \textbf{1.565} & \textbf{0.494} & \textbf{0.457} \\
 \midrule
 168h & Mamba2      & 2.588 & 4.848 & 2.922 & 2.021 & 0.596 & 0.627 \\
      & 1D-CNN      & 2.009 & 3.748 & 2.516 & 1.667 & 0.523 & 0.556 \\
      & Transformer & 2.159 & 4.724 & 2.294 & 1.747 & 0.537 & 0.580 \\
-     & \textbf{PIMSM} & -- & -- & -- & -- & -- & -- \\
+     & \textbf{PIMSM} & \textbf{1.334} & \textbf{2.849} & \textbf{1.638} & \textbf{1.610} & \textbf{0.506} & \textbf{0.476} \\
 \bottomrule
 \end{tabular}
 \caption{
 \textbf{Weather-5K cross-domain forecasting (Axis iv).}
-Variable-wise OOD spatial MAE is reported for temperature (TMP), sea-level pressure (SLP), dew point (DEW), wind rate, and wind angle components (cos/sin) across 24h, 72h, 120h, and 168h forecasting horizons. PIMSM is applied without domain-specific adaptation; pending PIMSM horizons are left blank.
+Variable-wise OOD spatial MAE is reported for temperature (TMP), sea-level pressure (SLP), dew point (DEW), wind rate, and wind angle components (cos/sin) across 24h, 72h, 120h, and 168h forecasting horizons. PIMSM is applied without domain-specific adaptation.
 }
 \label{tab:weather}
 \end{table}
@@ -528,7 +527,7 @@ PIMSM instead encodes temporal hierarchy directly within the state-space dynamic
 \section{Limitations}
 \label{sec:limitations}
 
-The current experiments test temporal-context truncation rather than a scanner-level change in TR; SpectralHyperNet receives the full sequence for scale calibration while the SSM backbone receives the shortened early-window input. This setting is useful for testing whether full-sequence spectral structure stabilizes representations under limited task evidence, but it should not be interpreted as a complete evaluation of acquisition-rate shift. PIMSM also assumes that a small number of spectrum-derived knees provides a useful summary of the signal's temporal organization; domains without clear piecewise spectral structure may require different scale parameterizations. Finally, the Weather-5K evaluation is currently partial: 72h spatial-OOD results are available, while additional PIMSM horizons are still running, so the cross-domain claim should be read as preliminary until the horizon sweep is complete.
+The current experiments test temporal-context truncation rather than a scanner-level change in TR; SpectralHyperNet receives the full sequence for scale calibration while the SSM backbone receives the shortened early-window input. This setting is useful for testing whether full-sequence spectral structure stabilizes representations under limited task evidence, but it should not be interpreted as a complete evaluation of acquisition-rate shift. PIMSM also assumes that a small number of spectrum-derived knees provides a useful summary of the signal's temporal organization; domains without clear piecewise spectral structure may require different scale parameterizations. Finally, the Weather-5K evaluation focuses on spatial OOD generalization across held-out stations; calendar-year splits are treated as a soft temporal-OOD reference rather than as the primary in-distribution control.
 
 
 \section{Conclusion}
@@ -536,7 +535,7 @@ The current experiments test temporal-context truncation rather than a scanner-l
 
 We introduced \textbf{Physics-Informed Multi-Scale Mamba (PIMSM)}, motivated by the hypothesis that temporal-kernel alignment is important for generalization in multiscale physical signals. By coupling discretization parameters to spectrum-derived knee frequencies and jointly anchoring both $\Delta$ and $A$ in acquisition time units, PIMSM constructs a structured multi-scale kernel family for temporal-context, brain-state, and cross-domain shifts.
 
-On completed HCP experiments, PIMSM improves robustness over parameter-matched single-scale baselines under severe temporal-context truncation, extreme low-resource transfer, and resting-state$\to$task-state generalization. Initial Weather-5K spatial-OOD results at the 72h horizon suggest that the same spectrum-guided temporal parameterization can extend to meteorological forecasting, with the remaining horizon sweep still in progress. Together, these results support the view that robust sequence modeling of multiscale physical signals benefits from architectural alignment with the intrinsic temporal organization of the underlying dynamical system.
+On completed HCP experiments, PIMSM improves robustness over parameter-matched single-scale baselines under severe temporal-context truncation, extreme low-resource transfer, and resting-state$\to$task-state generalization. Weather-5K spatial-OOD results suggest that the same spectrum-guided temporal parameterization can extend to meteorological forecasting across held-out stations. Together, these results support the view that robust sequence modeling of multiscale physical signals benefits from architectural alignment with the intrinsic temporal organization of the underlying dynamical system.
 
 
 \newpage
