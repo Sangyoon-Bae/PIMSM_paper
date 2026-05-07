@@ -413,6 +413,7 @@ PIMSM performs best in the extreme low-data regime (1\%).
 \label{sec:results:brainstateshift}
 
 We train on HCP resting-state fMRI for sex classification and evaluate the same task label on motor-task fMRI without adaptation, testing whether temporal kernels learned from spontaneous dynamics remain useful under task-evoked acquisition state.
+We use sex classification because the label is defined independently of scan condition and is available for both resting-state and task-fMRI, allowing the evaluation to change brain/acquisition state while keeping the prediction target fixed.
 We do not report CKA/dCor for Axis (iii) because resting-state and task-fMRI are not paired observations of the same input under two temporal conditions; cross-condition similarity would conflate representation stability with differences in behavioral state and sequence content.
 PIMSM achieves the highest accuracy and substantially lower cross-seed variance (Table~\ref{tab:brainstateshift}), suggesting reduced sensitivity to resting$\leftrightarrow$task reconfiguration in this setting rather than only a higher mean score.
 
@@ -432,7 +433,7 @@ Transformer & $0.554\pm0.063$ \\
 \end{tabular}
 \caption{
 \textbf{Brain-state shift: resting-state training $\to$ motor-task test (Axis iii).}
-Values are mean $\pm$ std over three seeds. Models are trained for sex classification on HCP resting-state fMRI and evaluated on HCP motor-task fMRI without adaptation.
+Values are mean $\pm$ std over three seeds. Models are trained for sex classification on HCP resting-state fMRI and evaluated on HCP motor-task fMRI without adaptation; the target label is shared across both scan conditions.
 PIMSM achieves the highest accuracy and the lowest cross-seed variance among the baselines in this setting, consistent with the hypothesis that physics-informed multi-scale kernels reduce sensitivity to resting$\to$task reconfiguration.
 }
 \label{tab:brainstateshift}
@@ -485,14 +486,18 @@ Values are mean $\pm$ std. Variable-wise spatial OOD MAE is reported for tempera
 \section{Related Work}
 \label{sec:related}
 
-\paragraph{Generalizable sequence models for time series and neural signals.}
-Recent work in brain foundation models and time-series adaptation emphasizes generalizability across data-efficiency, temporal/acquisition shift, and cross-domain settings~\citep{tak2026generalizable,qin2025cora,han2026unica,wang2025towards,wang2025slim,wang2026omni}.
-PIMSM asks a different question from simply scaling pretraining: whether a sequence backbone preserves the temporal scales needed for reuse under shift.
-Rather than using frozen backbones, auxiliary adaptation modules, or shift-specific supervision, it targets robustness through a temporal-scale inductive bias.
+\paragraph{Foundation models for scientific time series.}
+Brain foundation models and time-series forecasting foundation models demonstrate the value of large-scale pretraining, zero-/low-shot adaptation, and reusable representations across datasets~\citep{tak2026generalizable,wang2025towards,wang2025slim,wang2026omni,abhimanyu2024decoder,ansari2024chronos,woo2024moirai}.
+These works primarily ask how far representation learning can be pushed by larger corpora, generic sequence objectives, or adaptation modules.
+PIMSM is complementary: it asks whether the backbone itself preserves physically meaningful temporal scales under shift, even without modality-specific components or shift-specific supervision.
 
-\paragraph{Multi-scale state space models.}
-Ms-Mamba~\citep{karadag2025ms}, MS-SSM~\citep{Karami2025MSSSMAM}, STM3~\citep{chen2025stm3}, and WMF-Traffic~\citep{li2025multi} show that multi-scale SSM/Mamba designs are useful for forecasting and generic sequence benchmarks.
-PIMSM differs by deriving scale-specific discretization from empirical spectra, enforcing an ordered temporal hierarchy, and anchoring $\Delta$ and $A$ in dataset-native acquisition units.
+\paragraph{Multi-scale state-space and Mamba models.}
+Recent multi-scale SSM/Mamba variants motivate the need for temporal hierarchy, but instantiate scale in different ways.
+MS-SSM~\citep{Karami2025MSSSMAM} processes multiple resolutions with specialized state-space dynamics and an input-dependent scale mixer.
+ms-Mamba~\citep{karadag2025ms} uses multiple Mamba blocks with different sampling rates to model forecasting signals at several temporal scales.
+STM3~\citep{chen2025stm3} targets long-term spatio-temporal prediction with multiscale Mamba experts, adaptive graph causal convolution, and mixture-of-experts routing.
+WMF-Traffic~\citep{li2025multi} combines wavelet decomposition, traffic-aware Mamba, and Fourier adjustment for traffic forecasting.
+PIMSM differs from these scale-by-design approaches by deriving scale-specific discretization from empirical spectra, enforcing an ordered temporal hierarchy through knee frequencies and energy-weighted representative frequencies, and anchoring both $\Delta$ and $A$ in dataset-native acquisition units.
 
 \section{Discussion}
 \label{sec:discussion}
