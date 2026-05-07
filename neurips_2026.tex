@@ -240,33 +240,12 @@ Appendix~\ref{sec:appx:kernel_approx} gives a complementary approximation view f
 \caption{
 \textbf{Physics-informed multi-scale parameterization of temporal dynamics.}
 \textbf{(a)} SpectralHyperNet computes the input PSD, estimates knee frequencies and spectral exponents, and fits a piecewise power-law PSD.
-\textbf{(b1--b3)} The knees partition the frequency axis, not the time series; an energy-weighted representative frequency from each regime is mapped to ordered discretization parameters ($\Delta_1 \ge \Delta_2 \ge \Delta_3$) for fast-to-slow SSM heads, whose states interact through cross-scale attention.
+\textbf{(b1--b3)} The knees partition the frequency axis, not the time series; an energy-weighted representative frequency from each regime is mapped to ordered discretization parameters (shown for the default $K=3$ setting) for fast-to-slow SSM heads, whose states interact through cross-scale attention.
 }
 \label{fig:architecture_multiscale}
 \end{figure}
 
-PIMSM integrates multi-scale temporal structure into a state-space framework without relying on modality-specific components. As shown in Fig.~\ref{fig:architecture_multiscale}, the model first computes the power spectral density (PSD) of the input sequence and uses SpectralHyperNet to estimate knee frequencies $(f_1,f_2)$ and scaling exponents $(\beta_1,\beta_2,\beta_3)$. These parameters define a differentiable piecewise power-law approximation to the observed PSD, and the spectral fit loss compares the reconstructed piecewise PSD against the original PSD. The knees then partition the frequency axis into three regimes, corresponding to slow, intermediate, and fast temporal structure.
-
-For each spectral regime, PIMSM computes an energy-weighted representative frequency $f_{c,k}$ under the fitted power-law slope rather than using a fixed band midpoint. This representative frequency is mapped through a monotonic frequency-to-discretization transformation to produce a scale-specific SSM timestep $\Delta_k$, with higher representative frequencies assigned larger $\Delta$ and lower representative frequencies assigned smaller $\Delta$. Importantly, this procedure does not split or filter the input time series; the knee and exponent estimates only determine the scale-specific $\Delta_k$ values. Groups of SSM heads share the same $\Delta_k$, so each group implements a distinct lag-weighting profile while processing the original time-domain sequence, reducing temporal-kernel mismatch under structured shifts. The resulting scale-specific latent states are passed through lightweight cross-scale attention to model interactions among temporal scales, allowing fast and slow temporal evidence to modulate one another before the pooled representation is passed to a task-specific head for classification or forecasting.
-
-\begin{table}[t]
-\centering
-\small
-\begin{tabular}{p{0.96\linewidth}}
-\toprule
-\textbf{Algorithm 1: Spectrum-to-$\Delta$ parameterization in PIMSM} \\
-\midrule
-\textbf{Input:} time-domain sequence $x_{1:T}$ for the SSM backbone; spectral context $x^{\mathrm{spec}}$ (the same sequence by default, or a longer full-trial/full-run context in early-window HCP experiments); frequency bounds $[f_{\min}, f_{\max}]$; number of scales $K=3$. \\
-\textbf{1. PSD estimation:} compute $P(f)=|\mathrm{FFT}(x^{\mathrm{spec}})|^2$ over non-DC frequencies in $[f_{\min}, f_{\max}]$. \\
-\textbf{2. Piecewise spectral fit:} SpectralHyperNet predicts knees $(f_1,f_2)$ and exponents $(\beta_1,\beta_2,\beta_3)$; a differentiable piecewise power-law $\hat P(f)\propto f^{-\beta_k}$ is fit to $P(f)$ with spectral-fit and seam-continuity losses. \\
-\textbf{3. Representative frequencies:} the knees define frequency bands $[f_{\min},f_1]$, $[f_1,f_2]$, and $[f_2,f_{\max}]$; for each band, compute $f_{c,k}=\int fP_k(f)df/\int P_k(f)df$ under the fitted exponent $\beta_k$. \\
-\textbf{4. Delta mapping:} map each $f_{c,k}$ to a scale-specific timestep $\Delta_k$ using $\Delta_k \propto f_{c,k}$; in the default implementation, $m_k=p_k(1-w)+w\,t_k$ with $w=0.3$ and $\Delta_k=\Delta_{\min}+(\Delta_{\max}-\Delta_{\min})m_k$, followed by the ordered constraint $\Delta_1\ge\Delta_2\ge\Delta_3$. \\
-\textbf{5. Time-domain SSM processing:} process the original sequence $x_{1:T}$ without splitting or filtering it; SSM heads assigned to scale $k$ share $\Delta_k$, and their scale-specific states interact through cross-scale attention before prediction. \\
-\bottomrule
-\end{tabular}
-\caption{Operational summary of the PIMSM spectrum-to-dynamics mapping.}
-\label{alg:spectrum_to_delta}
-\end{table}
+PIMSM integrates multi-scale temporal structure into a state-space framework without relying on modality-specific components. As shown in Fig.~\ref{fig:architecture_multiscale}, SpectralHyperNet summarizes the input spectrum with knee frequencies and scaling exponents, and these spectral estimates parameterize scale-specific SSM timesteps $\Delta_k$. The original time-domain sequence is then processed by SSM head groups with distinct fast-to-slow temporal kernels, and cross-scale attention models interactions among the resulting scale-specific states before task prediction. The number of knees is configurable through the number of scale groups; the main experiments use the default $K=3$ regime setting as a concrete instance rather than an architectural restriction.
 
 \subsection{Datasets}
 \label{sec:methods:data}
@@ -274,18 +253,18 @@ For each spectral regime, PIMSM computes an energy-weighted representative frequ
 Full dataset details and preprocessing are in Appendix~\ref{sec:appx:data}.
 \textbf{HCP motor fMRI} (360 cortical ROIs, TR$=0.72$\,s, 5 motor conditions): primary benchmark for temporal-context truncation (backbone input restricted to the first 2/3 TRs of each trial) and low-resource transfer (1--100\% labels).
 \textbf{HCP resting-state fMRI}: models trained on rest (284 TRs) and evaluated on motor-task fMRI without adaptation (brain-state shift).
-\textbf{Weather-5K}~\citep{han2024far}: 5,000 global weather stations; cross-domain benchmark using hourly multivariate forecasting under a spatial OOD split, where geographically isolated held-out stations are never observed during training. We prioritize this split because Weather-5K is motivated by real-world station forecasting, and held-out stations more directly test deployment to unseen geographic domains than chronological holdouts over already observed stations. This setting is deliberately modality-agnostic: the same temporal-scale parameterization used for fMRI is applied to meteorological variables sampled every hour.
+\textbf{Weather-5K}~\citep{han2024far}: 5,672 global weather stations; cross-domain benchmark using hourly multivariate forecasting under a spatial OOD split, where geographically isolated held-out stations are never observed during training. We prioritize this split because Weather-5K is motivated by real-world station forecasting, and held-out stations more directly test deployment to unseen geographic domains than chronological holdouts over already observed stations. This setting is deliberately modality-agnostic: the same temporal-scale parameterization used for fMRI is applied to meteorological variables sampled every hour.
 
 \subsection{SpectralHyperNet: Spectrum-Guided Scale Inference}
 
-Following~\citet{bae2025spatiotemporal}, we model the BOLD power spectral density as a piecewise power-law across $K=3$ frequency regimes (ultra-low, low, high), separated by knee frequencies $(f_1, f_2)$.
+Following~\citet{bae2025spatiotemporal}, we model the BOLD power spectral density as a piecewise power-law across configurable frequency regimes; the main experiments use the default $K=3$ setting (ultra-low, low, high), separated by knee frequencies $(f_1, f_2)$.
 We empirically verify this piecewise structure across datasets and domains in Appendix~\ref{sec:appx:psd_multifractal}.
 
 \textbf{Spectral modeling.} Given the full sequence, we estimate the power spectral density $P(f)$ via FFT. In HCP motor experiments, SpectralHyperNet receives the full trial for spectral calibration while the SSM backbone receives only the first 3 or 2 TRs, testing whether full-sequence spectral structure stabilizes shortened task evidence rather than simulating a changed scanner TR. We assume a multi-scale power-law structure:
 \begin{equation}
-P(f) \propto f^{-\beta_k}, \quad f \in [f_{k-1}, f_k], \quad k = 1, 2, 3,
+P(f) \propto f^{-\beta_k}, \quad f \in [f_{k-1}, f_k], \quad k = 1,\dots,K,
 \end{equation}
-where $(f_1, f_2)$ are knee frequencies separating three frequency regimes.
+where $(f_1, f_2)$ are the default two knee frequencies separating three frequency regimes.
 
 \textbf{Knee estimation.} SpectralHyperNet predicts $(f_1, f_2)$ and exponents $(\beta_1, \beta_2, \beta_3)$ from the full-sequence spectrum, initialized from a data-driven scipy fit on the first training batch. A multi-resolution MAE spectral fit loss drives knee placement and a seam loss encourages piecewise continuity; hyperparameters are in Appendix~\ref{sec:appx:training_details}.
 
@@ -296,11 +275,30 @@ The core principle is $\Delta_k \propto f_{c,k}$: higher-frequency bands receive
 We mix global band position $p_k$ and within-band normalized frequency $t_k$ via $m_k = p_k(1-w) + w\,t_k$ ($w=0.3$), yielding $\Delta_k = \Delta_{\min} + (\Delta_{\max} - \Delta_{\min})\cdot m_k$.
 A hierarchical constraint $\Delta_1 \ge \Delta_2 \ge \Delta_3$ enforces temporal ordering. Ablations over $w$ and normalization mode are in Appendix~\ref{sec:appx:delta_ablation}.
 
+\begin{table}[t]
+\centering
+\footnotesize
+\begin{tabular}{p{0.96\linewidth}}
+\toprule
+\textbf{Algorithm 1: Spectrum-to-$\Delta$ parameterization in PIMSM} \\
+\midrule
+\textbf{Input:} time-domain sequence $x_{1:T}$ for the SSM backbone; spectral context $x^{\mathrm{spec}}$ (the same sequence by default, or a longer full-trial/full-run context in early-window HCP experiments); frequency bounds $[f_{\min}, f_{\max}]$; number of scales $K$ (default $K=3$). \\
+\textbf{1. PSD estimation:} compute $P(f)=|\mathrm{FFT}(x^{\mathrm{spec}})|^2$ over non-DC frequencies in $[f_{\min}, f_{\max}]$. \\
+\textbf{2. Piecewise spectral fit:} SpectralHyperNet predicts $K-1$ knees and $K$ exponents; a differentiable piecewise power-law $\hat P(f)\propto f^{-\beta_k}$ is fit to $P(f)$ with spectral-fit and seam-continuity losses. \\
+\textbf{3. Representative frequencies:} the knees define $K$ frequency bands; for each band, compute $f_{c,k}=\int fP_k(f)df/\int P_k(f)df$ under the fitted exponent $\beta_k$. \\
+\textbf{4. Delta mapping:} map each $f_{c,k}$ to a scale-specific timestep $\Delta_k$ using $\Delta_k \propto f_{c,k}$; in the default implementation, $m_k=p_k(1-w)+w\,t_k$ with $w=0.3$ and $\Delta_k=\Delta_{\min}+(\Delta_{\max}-\Delta_{\min})m_k$, followed by an ordered fast-to-slow constraint over $\{\Delta_k\}_{k=1}^{K}$. \\
+\textbf{5. Time-domain SSM processing:} process the original sequence $x_{1:T}$ without splitting or filtering it; SSM heads assigned to scale $k$ share $\Delta_k$, and their scale-specific states interact through cross-scale attention before prediction. \\
+\bottomrule
+\end{tabular}
+\caption{Operational summary of the PIMSM spectrum-to-dynamics mapping.}
+\label{alg:spectrum_to_delta}
+\end{table}
+
 \textbf{Acquisition-unit anchoring.} To reduce $\Delta$--$A$ scale non-identifiability, $\Delta_k$ is expressed in dataset-native time units with log-scale regularization, while $A$ is initialized and regularized to prevent compensatory rescaling. This pins $\tau_\text{eff} \approx \Delta/(-A)$ from both sides; implementation details are in Appendix~\ref{sec:appx:arch_details}.
 
 \subsection{Multi-Scale State-Space Block}
 
-Each PIMSM block extends the Mamba-2 SSD kernel to a multi-scale setting by grouping SSM heads into spectrum-derived scale groups. Heads within the same scale share $\Delta_k$ but maintain independent state transitions; scale-specific states are then fused through lightweight cross-scale attention. Full architectural equations and head counts are given in Appendix~\ref{sec:appx:arch_details}.
+Each PIMSM block extends the Mamba-2 SSD kernel to a multi-scale setting because its multi-head SSM structure provides a natural unit for assigning different discretization parameters to different head groups. This makes Mamba-2 a convenient backbone for multi-scale temporal parameterization: PIMSM can introduce fast-to-slow temporal kernels by sharing $\Delta_k$ within each scale group, without substantially increasing the parameter count relative to a single-scale Mamba2 baseline. Heads within the same scale share $\Delta_k$ but maintain independent state transitions; using multiple heads per scale increases within-scale representational capacity while preserving the intended temporal hierarchy. The resulting scale-specific states are fused through lightweight cross-scale attention to model interactions among temporal scales. Full architectural equations and head counts are given in Appendix~\ref{sec:appx:arch_details}.
 
 \subsection{Backbone and Prediction Head}
 
@@ -343,7 +341,7 @@ Given the small seed count, we treat paired tests as exploratory rather than def
 
 \begin{table}[htbp]
 \centering
-\small
+\footnotesize
 \begin{tabular}{lcccc}
 \toprule
 Model & Full trial & 2 TRs & CKA (Full trial$\leftrightarrow$2TR) & dCor (Full trial$\leftrightarrow$2TR) \\
@@ -382,7 +380,7 @@ Pretraining on resting-state fMRI further improves robustness; linear probing re
 
 \begin{table}[htbp]
 \centering
-\small
+\footnotesize
 \begin{tabular}{lcccc}
 \toprule
 Model & 1\% & 5\% & 10\% & 100\% \\
@@ -411,7 +409,7 @@ PIMSM achieves the highest accuracy and substantially lower cross-seed variance 
 
 \begin{table}[htbp]
 \centering
-\small
+\footnotesize
 \begin{tabular}{lc}
 \toprule
 Model & Accuracy (mean$\pm$std) \\
@@ -442,7 +440,7 @@ The widening margin at longer horizons is consistent with the intended real-worl
 This result supports the interpretation that PIMSM is not simply an fMRI-specific architecture, but a modality-agnostic mechanism for aligning SSM memory scales to empirical temporal structure.
 \begin{table}[htbp]
 \centering
-\small
+\footnotesize
 \setlength{\tabcolsep}{2.5pt}
 \begin{tabular}{llcccccc}
 \toprule
@@ -492,7 +490,7 @@ PIMSM differs by deriving scale-specific discretization from empirical spectra, 
 \section{Limitations}
 \label{sec:limitations}
 
-The current experiments test temporal-context truncation rather than a scanner-level change in TR: SpectralHyperNet receives the full sequence for scale calibration while the SSM backbone receives shortened early-window input. PIMSM also assumes that a small number of spectrum-derived knees usefully summarizes temporal organization; domains without clear piecewise spectral structure, or tasks requiring a different number of scales than the fixed $K=3$ used here, may require different parameterizations. Acquisition-unit anchoring requires a known sampling interval, and SpectralHyperNet adds FFT and spectral-fit overhead relative to plain Mamba2; full GPU-hour accounting remains future work. Finally, HCP tables report three-seed means and standard deviations rather than formal paired significance tests, contemporaneous multi-scale SSM/Mamba methods are not included as parameter-matched HCP baselines, and Weather-5K is evaluated under held-out-station spatial OOD.
+The current experiments test temporal-context truncation rather than a scanner-level change in TR: SpectralHyperNet receives the full sequence for scale calibration while the SSM backbone receives shortened early-window input. PIMSM also assumes that a small number of spectrum-derived knees usefully summarizes temporal organization; domains without clear piecewise spectral structure, or tasks requiring a different number of scales than the default $K=3$ used here, may require different parameterizations. Acquisition-unit anchoring requires a known sampling interval, and SpectralHyperNet adds FFT and spectral-fit overhead relative to plain Mamba2; full GPU-hour accounting remains future work. Finally, HCP tables report three-seed means and standard deviations rather than formal paired significance tests, contemporaneous multi-scale SSM/Mamba methods are not included as parameter-matched HCP baselines, and Weather-5K is evaluated under held-out-station spatial OOD.
 
 
 \section{Conclusion}
@@ -641,7 +639,7 @@ This appendix provides supporting detail for Section~\ref{sec:results:hcp_tr_shi
 
 \begin{table}[htbp]
 \centering
-\small
+\footnotesize
 \begin{tabular}{lcccc}
 \toprule
 Model & Full trial & 3 TRs & CKA (Full trial$\leftrightarrow$3TR) & dCor (Full trial$\leftrightarrow$3TR) \\
@@ -680,7 +678,7 @@ Larger PIMSM models exhibit increasingly stable representations under temporal-c
 
 \begin{table}[htbp]
 \centering
-\small
+\footnotesize
 \begin{tabular}{lcccc}
 \toprule
 Model & Full trial & 2 TRs & CKA (Full trial$\leftrightarrow$2TR) & dCor (Full trial$\leftrightarrow$2TR) \\
@@ -695,7 +693,7 @@ Mamba2+drift & 0.987$\pm$0.004 & 0.923$\pm$0.009 & 0.837$\pm$0.021 & 0.854$\pm$0
 
 \begin{table}[htbp]
 \centering
-\small
+\footnotesize
 \begin{tabular}{lcccc}
 \toprule
 Model & Full trial & 3 TRs & CKA (Full trial$\leftrightarrow$3TR) & dCor (Full trial$\leftrightarrow$3TR) \\
@@ -774,6 +772,7 @@ The preserved heterogeneity of $\alpha$ values across layers suggests that the p
 
 \begin{table}[htbp]
 \centering
+\footnotesize
 \begin{tabular}{lccccc}
 \toprule
 Model & From Scratch & Full trial & 2 TRs & CKA & dCor \\
@@ -805,6 +804,7 @@ These margins are consistent but modest, suggesting that the primary benefit of 
 
 \begin{table}[htbp]
 \centering
+\footnotesize
 \begin{tabular}{lccccc}
 \toprule
 Model & From Scratch & Full trial & 2 TRs & CKA & dCor \\
@@ -910,7 +910,7 @@ In each panel, the fitted piecewise model (dashed lines) accurately captures the
 We present empirical power spectral densities (PSDs) for fMRI cohorts and Weather-5K meteorological variables (Figures~\ref{fig:appx:psd_neural} and~\ref{fig:appx:psd_weather}).
 Across all settings, the log-log PSD exhibits a piecewise linear structure with distinct scaling exponents $\beta_k$ separated by knee frequencies $(f_1, f_2)$, consistent with the piecewise power-law model in Eq.~\eqref{eq:piecewise_powerlaw}.
 For the Weather-5K dataset, we fit the piecewise model \emph{independently per meteorological variable} (temperature, dew point, sea-level pressure, wind angle, wind rate), since each channel has its own characteristic spectral profile; PIMSM therefore infers a separate set of knee frequencies and scale-specific $\Delta_k$ for each variable.
-This empirical regularity motivates the SpectralHyperNet-based scale inference at the heart of PIMSM: rather than imposing a single-exponent scaling law, we fit a $K=3$ regime piecewise model whose knee frequencies adaptively parameterize the scale-specific discretization parameters $\Delta_k$.
+This empirical regularity motivates the SpectralHyperNet-based scale inference at the heart of PIMSM: rather than imposing a single-exponent scaling law, we fit a configurable piecewise model (default $K=3$ in the main experiments) whose knee frequencies adaptively parameterize the scale-specific discretization parameters $\Delta_k$.
 
 \section{Multi-scale Kernels Reduce Approximation Error to Power-Law Targets}
 \label{sec:appx:kernel_approx}
@@ -995,7 +995,7 @@ Event-related segments for five motor conditions (LH, RH, LF, RF, T) were extrac
 Models trained on resting-state fMRI (truncated to 284 TRs) for sex classification, then evaluated on HCP motor-task fMRI (284 TRs, same subjects, disjoint test split) without adaptation.
 
 \paragraph{Weather-5K.}
-Large-scale meteorological benchmark~\citep{han2024far} spanning 5,000 global weather stations.
+Large-scale meteorological benchmark~\citep{han2024far} spanning 5,672 global weather stations.
 We use hourly station records with five raw meteorological variables: temperature (TMP), dew point (DEW), wind angle, wind rate, and sea-level pressure (SLP). Wind angle is circular, so it is represented as sine and cosine components, giving six model channels: TMP, DEW, wind-sin, wind-cos, wind rate, and SLP. Missing rows are dropped before window construction.
 
 For matched experiments we use a 100-station geo-stratified subset. Stations are sampled from geographic clusters built from latitude, longitude, elevation, and station quality metadata, with a target cluster size of eight stations. The spatial OOD split then partitions stations, not windows: stations are clustered on unit-sphere geographic coordinates, clusters are ranked by geographic isolation, and the most isolated cluster(s) are assigned to the held-out test set. We use this station-disjoint split as the primary Weather-5K evaluation because chronological holdouts share station identity between train and test, while spatial holdout evaluates generalization to unseen station domains. In the current runs, 90\% of stations are used for training/validation and 10\% are held out for spatial OOD testing. Within the train-station set, $1/9$ of windows are used for validation, yielding an approximate 8:1:1 train/validation/test station-window budget while keeping test stations disjoint from training.
