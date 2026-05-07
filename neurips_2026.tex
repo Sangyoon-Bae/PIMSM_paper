@@ -379,6 +379,7 @@ The same paired-seed pattern holds at 3TR: PIMSM improves over Mamba2 on accurac
 
 \paragraph{Drift intervention and scaling.}
 Explicit drift regularization on Mamba2 improves stability without degrading ID performance, providing evidence that representation drift is a useful intervention target; PIMSM achieves comparable stability through architecture alone (detailed tables and scaling figures in Appendix~\ref{sec:appx:hcp_tr_shift}).
+Complementary WeightWatcher analysis (Appendix~\ref{sec:appx:weightwatcher}) shows that PIMSM preserves heterogeneous layer-wise power-law exponents under full-trial and 2TR inputs, whereas Mamba2 concentrates near a saturated regime, supporting the view that PIMSM resists representation homogenization rather than merely improving output accuracy.
 
 \subsection{Axis (ii): Low-Resource Generalization — HCP Motor Data Scarcity}
 \label{sec:results:data_scarce}
@@ -500,6 +501,7 @@ ms-Mamba~\citep{karadag2025ms} uses multiple Mamba blocks with different samplin
 STM3~\citep{chen2025stm3} targets long-term spatio-temporal prediction with multiscale Mamba experts, adaptive graph causal convolution, and mixture-of-experts routing.
 WMF-Traffic~\citep{li2025multi} combines wavelet decomposition, traffic-aware Mamba, and Fourier adjustment for traffic forecasting.
 PIMSM differs from these scale-by-design approaches by deriving scale-specific discretization from empirical spectra, enforcing an ordered temporal hierarchy through knee frequencies and energy-weighted representative frequencies, and anchoring both $\Delta$ and $A$ in dataset-native acquisition units.
+Because several concurrent multi-scale SSM/Mamba variants either lack mature public implementations or target different benchmark settings, our primary empirical comparisons use parameter-matched, widely established backbones (Mamba2, Transformer, and 1D-CNN); the related models are therefore used to position the design space rather than as directly reimplemented baselines.
 
 \section{Discussion}
 \label{sec:discussion}
@@ -510,7 +512,7 @@ In neural data, this matters most in regimes where ordinary supervision is weak 
 
 Weather-5K shows that the same mechanism is not tied to neuroimaging-specific assumptions. Under held-out-station spatial OOD, the larger gains at longer horizons suggest that robust forecasting increasingly depends on preserving longer-range temporal structure rather than fitting short-horizon local patterns alone. This supports the interpretation of PIMSM as a modality-agnostic spectrum-to-memory mechanism.
 
-Several limitations remain. The current HCP temporal-context experiments test input truncation rather than a scanner-level change in TR: SpectralHyperNet receives the full sequence for scale calibration while the SSM backbone receives shortened early-window input. PIMSM also assumes that a small number of spectrum-derived knees usefully summarizes temporal organization; domains without clear piecewise spectral structure, or tasks requiring a different number of scales than the default $K=3$ used here, may require different parameterizations. Acquisition-unit anchoring requires a known sampling interval, and SpectralHyperNet adds FFT and spectral-fit overhead relative to plain Mamba2; full GPU-hour accounting remains future work. Finally, HCP tables report three-seed means and standard deviations rather than formal paired significance tests, contemporaneous multi-scale SSM/Mamba methods are not included as parameter-matched HCP baselines, and Weather-5K is evaluated under held-out-station spatial OOD.
+Several limitations remain. The current HCP temporal-context experiments test input truncation rather than a scanner-level change in TR: SpectralHyperNet receives the full sequence for scale calibration while the SSM backbone receives shortened early-window input. PIMSM also assumes that a small number of spectrum-derived knees usefully summarizes temporal organization; domains without clear piecewise spectral structure, or tasks requiring a different number of scales than the default $K=3$ used here, may require different parameterizations. Acquisition-unit anchoring requires a known sampling interval, and SpectralHyperNet adds FFT and spectral-fit overhead relative to plain Mamba2; full GPU-hour accounting remains future work. Finally, HCP tables report three-seed means and standard deviations rather than formal paired significance tests, contemporaneous multi-scale SSM/Mamba methods are discussed but not included as parameter-matched HCP baselines, and Weather-5K is evaluated under held-out-station spatial OOD.
 
 
 \newpage
