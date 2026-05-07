@@ -247,12 +247,12 @@ Appendix~\ref{sec:appx:kernel_approx} gives a complementary approximation view f
 \caption{
 \textbf{Physics-informed multi-scale parameterization of temporal dynamics.}
 \textbf{(a)} SpectralHyperNet computes the input PSD, estimates knee frequencies and spectral exponents, and fits a piecewise power-law PSD.
-\textbf{(b1--b3)} The knees partition the frequency axis, not the time series; an energy-weighted representative frequency from each regime is mapped to ordered discretization parameters (shown for the default $K=3$ setting) for fast-to-slow SSM heads, whose states interact through cross-scale attention.
+\textbf{(b1--b3)} The knees partition the frequency axis, not the time series; an energy-weighted representative frequency from each regime is mapped to ordered discretization parameters in acquisition units (TRs for fMRI, hours for weather; default $K=3$) for fast-to-slow SSM heads, whose states interact through cross-scale attention.
 }
 \label{fig:architecture_multiscale}
 \end{figure}
 
-PIMSM integrates multi-scale temporal structure into a state-space framework without modality-specific components. As shown in Fig.~\ref{fig:architecture_multiscale}, SpectralHyperNet estimates knee frequencies and scaling exponents from the input spectrum; these estimates parameterize scale-specific SSM timesteps $\Delta_k$. The original sequence is processed by fast-to-slow SSM head groups, and cross-scale attention models interactions among their states.
+PIMSM integrates multi-scale temporal structure into a state-space framework without modality-specific components. As shown in Fig.~\ref{fig:architecture_multiscale}, SpectralHyperNet estimates knee frequencies and scaling exponents from the input spectrum; these estimates parameterize scale-specific SSM timesteps $\Delta_k$ in the same acquisition units as the data. The original sequence is processed by fast-to-slow SSM head groups, and cross-scale attention models interactions among their states.
 
 \subsection{Datasets}
 \label{sec:methods:data}
