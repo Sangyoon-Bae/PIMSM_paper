@@ -308,7 +308,7 @@ This setting is directly relevant to low-latency brain-computer interfaces and c
 Figure~\ref{fig:tr_shift_stability} reports representation stability (CKA, distance correlation dCor between full-trial and truncated-input representations) alongside decoding accuracy.
 
 \paragraph{Full trial $\rightarrow$ 2 TRs (severe truncation).}
-Table~\ref{tab:drift2tr} shows that PIMSM maintains the highest accuracy ($0.933\pm0.016$) and representation stability (CKA $0.812$, dCor $0.846$) under severe truncation, compared with Mamba2 (accuracy $0.914$, CKA $0.733$), Transformer ($0.884$, CKA $0.783$), and 1D-CNN ($0.847$, CKA $0.559$). PIMSM ablations with learnable or random $\Delta$ are less stable, suggesting that the spectrum-derived scale parameterization contributes beyond multi-scale capacity alone.
+Table~\ref{tab:drift2tr} shows that PIMSM maintains the highest accuracy ($0.933\pm0.016$) and representation stability (CKA $0.812$, dCor $0.846$) under severe truncation, compared with Mamba2 (accuracy $0.914$, CKA $0.733$), Transformer ($0.884$, CKA $0.783$), and 1D-CNN ($0.847$, CKA $0.559$). Replacing spectrum-derived $\Delta$ with learnable or random values increases the full-trial$\to$2TR accuracy drop (0.069 and 0.094 versus 0.054 for PIMSM) and lowers representation stability, indicating that robustness is not explained by multi-scale capacity alone but by spectrum-aligned temporal anchoring.
 Across the three paired seeds, PIMSM improves over Mamba2 on all shifted 2TR metrics (accuracy, CKA, and dCor).
 Given the small seed count, we treat paired tests as exploratory rather than definitive; the paired effect sizes are nevertheless large in this temporal-context setting.
 
