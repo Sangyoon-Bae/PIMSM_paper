@@ -245,7 +245,7 @@ PIMSM (Physics-Informed Multi-Scale Mamba) is designed to explicitly integrate t
 Full dataset details and preprocessing are in Appendix~\ref{sec:appx:data}.
 \textbf{HCP motor fMRI} (360 cortical ROIs, TR$=0.72$\,s, 5 motor conditions): primary benchmark for temporal-context truncation (backbone input restricted to the first 2/3 TRs of each trial) and low-resource transfer (1--100\% labels).
 \textbf{HCP resting-state fMRI}: models trained on rest (284 TRs) and evaluated on motor-task fMRI without adaptation (brain-state shift).
-\textbf{Weather-5K}~\citep{han2024far}: 5,000 global weather stations; cross-domain benchmark using hourly multivariate forecasting under a spatial OOD split, where geographically isolated held-out stations are never observed during training. This setting is deliberately modality-agnostic: the same temporal-scale parameterization used for fMRI is applied to meteorological variables sampled every hour.
+\textbf{Weather-5K}~\citep{han2024far}: 5,000 global weather stations; cross-domain benchmark using hourly multivariate forecasting under a spatial OOD split, where geographically isolated held-out stations are never observed during training. We prioritize this split because Weather-5K is motivated by real-world station forecasting, and held-out stations more directly test deployment to unseen geographic domains than chronological holdouts over already observed stations. This setting is deliberately modality-agnostic: the same temporal-scale parameterization used for fMRI is applied to meteorological variables sampled every hour.
 
 \subsection{SpectralHyperNet: Spectrum-Guided Scale Inference}
 
@@ -407,17 +407,18 @@ PIMSM achieves the highest accuracy and the lowest cross-seed variance among the
 
 We evaluate whether the same spectrum-guided temporal parameterization transfers to meteorological forecasting without domain-specific adaptation.
 Weather-5K is a substantially different modality and sampling regime from fMRI, with hourly station measurements and heterogeneous target units; Table~\ref{tab:weather} therefore reports variable-wise MAE under the held-out-station spatial OOD split.
+We focus on spatial OOD because a chronological split still evaluates future windows from stations seen during training, whereas held-out stations test whether temporal-scale alignment transfers to unseen geographic regimes.
 Across forecasting horizons, PIMSM attains the lowest MAE on all 24 variable-horizon endpoints, including scalar meteorological variables (TMP, SLP, DEW), wind rate, and both wind-angle components.
 Against the best non-PIMSM baseline for each endpoint, PIMSM reduces MAE by 15.2\% on average, with larger gains at longer horizons (11.4\% at 24h versus 17.9\% at 168h).
 The widening margin at longer horizons is consistent with the intended real-world setting: robust forecasting under station shift increasingly depends on preserving longer-range temporal structure rather than fitting short-horizon local patterns alone.
 This result supports the interpretation that PIMSM is not simply an fMRI-specific architecture, but a modality-agnostic mechanism for aligning SSM memory scales to empirical temporal structure.
 \begin{table}[htbp]
 \centering
-\scriptsize
-\setlength{\tabcolsep}{3pt}
+\small
+\setlength{\tabcolsep}{2.5pt}
 \begin{tabular}{llcccccc}
 \toprule
-Horizon & Model & TMP & SLP & DEW & Wind Rate & Wind Angle (cos) & Wind Angle (sin) \\
+Horizon & Model & TMP & SLP & DEW & Wind Rate & Wind cos & Wind sin \\
 \midrule
 24h & Mamba2      & 1.823 & 2.486 & 1.951 & 1.903 & 0.561 & 0.530 \\
     & 1D-CNN      & 1.150 & 1.505 & 1.316 & 1.330 & 0.416 & 0.389 \\
@@ -969,7 +970,7 @@ Models trained on resting-state fMRI (truncated to 284 TRs) for sex classificati
 Large-scale meteorological benchmark~\citep{han2024far} spanning 5,000 global weather stations.
 We use hourly station records with five raw meteorological variables: temperature (TMP), dew point (DEW), wind angle, wind rate, and sea-level pressure (SLP). Wind angle is circular, so it is represented as sine and cosine components, giving six model channels: TMP, DEW, wind-sin, wind-cos, wind rate, and SLP. Missing rows are dropped before window construction.
 
-For matched experiments we use a 100-station geo-stratified subset. Stations are sampled from geographic clusters built from latitude, longitude, elevation, and station quality metadata, with a target cluster size of eight stations. The spatial OOD split then partitions stations, not windows: stations are clustered on unit-sphere geographic coordinates, clusters are ranked by geographic isolation, and the most isolated cluster(s) are assigned to the held-out test set. In the current runs, 90\% of stations are used for training/validation and 10\% are held out for spatial OOD testing. Within the train-station set, $1/9$ of windows are used for validation, yielding an approximate 8:1:1 train/validation/test station-window budget while keeping test stations disjoint from training.
+For matched experiments we use a 100-station geo-stratified subset. Stations are sampled from geographic clusters built from latitude, longitude, elevation, and station quality metadata, with a target cluster size of eight stations. The spatial OOD split then partitions stations, not windows: stations are clustered on unit-sphere geographic coordinates, clusters are ranked by geographic isolation, and the most isolated cluster(s) are assigned to the held-out test set. We use this station-disjoint split as the primary Weather-5K evaluation because chronological holdouts share station identity between train and test, while spatial holdout evaluates generalization to unseen station domains. In the current runs, 90\% of stations are used for training/validation and 10\% are held out for spatial OOD testing. Within the train-station set, $1/9$ of windows are used for validation, yielding an approximate 8:1:1 train/validation/test station-window budget while keeping test stations disjoint from training.
 
 Normalization statistics for z-scoring are computed from training inputs only. For train stations, per-station mean and standard deviation are estimated from training windows; held-out spatial OOD stations fall back to the global training statistics because their station-specific statistics are unavailable during training. RevIN is then applied on top of this dataset-level normalization during model training and evaluation, and predictions are mapped back to variable units before reporting MAE.
 
