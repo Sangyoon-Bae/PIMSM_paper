@@ -376,6 +376,8 @@ Figure~\ref{fig:tr_shift_stability} reports representation stability (CKA, dista
 
 \paragraph{Full trial $\rightarrow$ 2 TRs (severe truncation).}
 Table~\ref{tab:drift2tr} shows that PIMSM maintains the highest accuracy ($0.933\pm0.016$) and representation stability (CKA $0.812$, dCor $0.846$) under severe truncation, compared with Mamba2 (accuracy $0.914$, CKA $0.733$), Transformer ($0.884$, CKA $0.783$), and 1D-CNN ($0.847$, CKA $0.559$). PIMSM ablations with learnable or random $\Delta$ are less stable, suggesting that the spectrum-derived scale parameterization contributes beyond multi-scale capacity alone.
+Across the three paired seeds, PIMSM improves over Mamba2 on all shifted 2TR metrics (accuracy, CKA, and dCor).
+Given the small seed count, we treat paired tests as exploratory rather than definitive; the paired effect sizes are nevertheless large in this temporal-context setting.
 
 \begin{table}[htbp]
 \centering
@@ -402,6 +404,7 @@ PIMSM achieves the highest accuracy and representation stability. Ablations with
 
 \paragraph{Full trial $\rightarrow$ 3 TRs (moderate truncation).}
 Under the milder full-trial $\rightarrow$ 3 TRs setting, PIMSM shows the same trend, achieving the best 3TR accuracy and stable representations among parameter-matched baselines (Appendix Table~\ref{tab:drift3tr}).
+The same paired-seed pattern holds at 3TR: PIMSM improves over Mamba2 on accuracy, CKA, and dCor for all three seeds, again supporting the robustness trend without claiming formal statistical significance.
 
 \paragraph{Drift intervention and scaling.}
 Explicit drift regularization on Mamba2 improves stability without degrading ID performance, providing evidence that representation drift is a useful intervention target; PIMSM achieves comparable stability through architecture alone (detailed tables and scaling figures in Appendix~\ref{sec:appx:hcp_tr_shift}).
@@ -411,7 +414,7 @@ Explicit drift regularization on Mamba2 improves stability without degrading ID 
 
 Table~\ref{tab:data_scarce} reports motor decoding accuracy as labeled training data varies from 1\% to 100\%.
 At 1\% data, PIMSM achieves $0.797\pm0.040$, compared with Mamba2 ($0.752$), Transformer ($0.774$), and 1D-CNN ($0.709$).
-Differences diminish beyond 10\%, indicating that physics-informed multi-scale dynamics primarily improve sample efficiency in the extreme low-supervision regime.
+Differences diminish beyond 10\%, and Transformer is strongest at 5\%, indicating that physics-informed multi-scale dynamics primarily improve sample efficiency in the most extreme low-supervision regime rather than uniformly dominating all label budgets.
 Pretraining on resting-state fMRI further improves robustness; linear probing results are reported in Appendix~\ref{sec:appx:pretrain}.
 
 \begin{table}[htbp]
@@ -459,7 +462,7 @@ Transformer & $0.554\pm0.063$ \\
 \caption{
 \textbf{Brain-state shift: resting-state training $\to$ motor-task test (Axis iii).}
 Models are trained for sex classification on HCP resting-state fMRI and evaluated on HCP motor-task fMRI without adaptation.
-PIMSM achieves the highest accuracy and $3$--$5\times$ lower cross-seed variance than the baselines in this setting, consistent with the hypothesis that physics-informed multi-scale kernels reduce sensitivity to resting$\to$task reconfiguration.
+PIMSM achieves the highest accuracy and the lowest cross-seed variance among the baselines in this setting, consistent with the hypothesis that physics-informed multi-scale kernels reduce sensitivity to resting$\to$task reconfiguration.
 }
 \label{tab:brainstateshift}
 \end{table}
@@ -520,14 +523,14 @@ Recent fMRI models (NeuroSTORM~\citep{wang2025towards}, SLIM-Brain~\citep{wang20
 Unlike adaptation-based approaches, PIMSM targets robustness through architectural inductive bias, without frozen backbones, auxiliary adaptation modules, or shift-specific supervision in the evaluated HCP settings.
 
 \paragraph{Multi-scale state space models.}
-Ms-Mamba~\citep{karadag2025ms}, MS-SSM~\citep{Karami2025MSSSMAM}, and STM3~\citep{chen2025stm3} incorporate multi-scale structure into Mamba-based architectures via parallel blocks, multi-resolution decomposition, or scale-specific parameter branches. WMF-Traffic~\citep{li2025multi} uses explicit wavelet decomposition with scale-adaptive convolutions.
-These approaches impose multi-scale structure at the architectural level through parameter duplication.
-PIMSM instead encodes temporal hierarchy directly within the state-space dynamics via spectrum-derived discretization, without branching or scale-wise parameter replication.
+Ms-Mamba~\citep{karadag2025ms}, MS-SSM~\citep{Karami2025MSSSMAM}, and STM3~\citep{chen2025stm3} incorporate multi-scale structure into Mamba-based or SSM architectures via parallel scale branches, multi-resolution processing, learnable temporal scales, or mixture-of-experts routing. WMF-Traffic~\citep{li2025multi} uses explicit wavelet decomposition with scale-adaptive convolutions for traffic forecasting.
+These methods provide important evidence that multi-scale SSMs are useful, but they generally learn or route scale structure from the task loss and are designed for forecasting or generic sequence benchmarks rather than acquisition-unit-stable neural representation learning.
+PIMSM is complementary: it uses empirical spectra to derive scale-specific discretization, enforces an ordered temporal hierarchy, and jointly anchors $\Delta$ and $A$ in dataset-native acquisition units.
 
 \section{Limitations}
 \label{sec:limitations}
 
-The current experiments test temporal-context truncation rather than a scanner-level change in TR; SpectralHyperNet receives the full sequence for scale calibration while the SSM backbone receives the shortened early-window input. This setting is useful for testing whether full-sequence spectral structure stabilizes representations under limited task evidence, but it should not be interpreted as a complete evaluation of acquisition-rate shift. PIMSM also assumes that a small number of spectrum-derived knees provides a useful summary of the signal's temporal organization; domains without clear piecewise spectral structure may require different scale parameterizations. Finally, the Weather-5K evaluation focuses on spatial OOD generalization across held-out stations; calendar-year splits are treated as a soft temporal-OOD reference rather than as the primary in-distribution control.
+The current experiments test temporal-context truncation rather than a scanner-level change in TR; SpectralHyperNet receives the full sequence for scale calibration while the SSM backbone receives the shortened early-window input. This setting is useful for testing whether full-sequence spectral structure stabilizes representations under limited task evidence, but it should not be interpreted as a complete evaluation of acquisition-rate shift. PIMSM also assumes that a small number of spectrum-derived knees provides a useful summary of the signal's temporal organization; domains without clear piecewise spectral structure may require different scale parameterizations. The present model fixes $K=3$ scale regimes in the main experiments, so broader sensitivity over the number of knees remains future work. The acquisition-unit anchoring also requires a known sampling interval or physically meaningful time unit. SpectralHyperNet adds FFT and spectral-fit overhead relative to plain Mamba2, and the current manuscript does not provide a full GPU-hour accounting. Finally, the HCP tables use three seeds and report standard deviations rather than formal paired significance tests; the related multi-scale SSM/Mamba methods are discussed as contemporaneous related work but are not included as parameter-matched HCP baselines in the current tables. The Weather-5K evaluation focuses on spatial OOD generalization across held-out stations; calendar-year splits are treated as a soft temporal-OOD reference rather than as the primary in-distribution control.
 
 
 \section{Conclusion}
