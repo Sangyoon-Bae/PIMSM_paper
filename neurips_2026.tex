@@ -64,6 +64,7 @@
 \usepackage{amssymb}
 \usepackage{amsmath}
 \usepackage{amsthm}
+\usepackage{algorithm}
 \setlength{\abovecaptionskip}{9pt}
 \setlength{\belowcaptionskip}{0pt}
 \setlength{\textfloatsep}{2pt plus 1pt minus 1pt}
@@ -251,7 +252,7 @@ Appendix~\ref{sec:appx:kernel_approx} gives a complementary approximation view f
 \label{fig:architecture_multiscale}
 \end{figure}
 
-PIMSM integrates multi-scale temporal structure into a state-space framework without modality-specific components. As shown in Fig.~\ref{fig:architecture_multiscale}, SpectralHyperNet estimates knee frequencies and scaling exponents from the input spectrum; these estimates parameterize scale-specific SSM timesteps $\Delta_k$. The original sequence is processed by fast-to-slow SSM head groups, and cross-scale attention models interactions among their states. The number of knees is configurable; the main experiments use the default $K=3$ regimes.
+PIMSM integrates multi-scale temporal structure into a state-space framework without modality-specific components. As shown in Fig.~\ref{fig:architecture_multiscale}, SpectralHyperNet estimates knee frequencies and scaling exponents from the input spectrum; these estimates parameterize scale-specific SSM timesteps $\Delta_k$. The original sequence is processed by fast-to-slow SSM head groups, and cross-scale attention models interactions among their states.
 
 \subsection{Datasets}
 \label{sec:methods:data}
@@ -281,14 +282,15 @@ The core principle is $\Delta_k \propto f_{c,k}$: higher-frequency bands receive
 We mix global band position $p_k$ and within-band normalized frequency $t_k$ via $m_k = p_k(1-w) + w\,t_k$ ($w=0.3$), yielding $\Delta_k = \Delta_{\min} + (\Delta_{\max} - \Delta_{\min})\cdot m_k$.
 A hierarchical constraint $\Delta_1 \ge \Delta_2 \ge \Delta_3$ enforces temporal ordering. Ablations over $w$ and normalization mode are in Appendix~\ref{sec:appx:delta_ablation}.
 
-\begin{table}[t]
+\begin{algorithm}[t]
 \centering
 \footnotesize
+\caption{Spectrum-to-$\Delta$ parameterization in PIMSM.}
+\label{alg:spectrum_to_delta}
 \begin{tabular}{p{0.96\linewidth}}
 \toprule
-\textbf{Algorithm 1: Spectrum-to-$\Delta$ parameterization in PIMSM} \\
-\midrule
 \textbf{Input:} time-domain sequence $x_{1:T}$ for the SSM backbone; spectral context $x^{\mathrm{spec}}$ (the same sequence by default, or the full 284-TR motor run in early-window HCP experiments); frequency bounds $[f_{\min}, f_{\max}]$; number of scales $K$ (default $K=3$). \\
+\midrule
 \textbf{1. PSD estimation:} compute $P(f)=|\mathrm{FFT}(x^{\mathrm{spec}})|^2$ over non-DC frequencies in $[f_{\min}, f_{\max}]$. \\
 \textbf{2. Piecewise spectral fit:} SpectralHyperNet predicts $K-1$ knees and $K$ exponents; a differentiable piecewise power-law $\hat P(f)\propto f^{-\beta_k}$ is fit to $P(f)$ with spectral-fit and seam-continuity losses. \\
 \textbf{3. Representative frequencies:} the knees define $K$ frequency bands; for each band, compute $f_{c,k}=\int fP_k(f)df/\int P_k(f)df$ under the fitted exponent $\beta_k$. \\
@@ -296,9 +298,7 @@ A hierarchical constraint $\Delta_1 \ge \Delta_2 \ge \Delta_3$ enforces temporal
 \textbf{5. Time-domain SSM processing:} process the original sequence $x_{1:T}$ without splitting or filtering it; SSM heads assigned to scale $k$ share $\Delta_k$, and their scale-specific states interact through cross-scale attention before prediction. \\
 \bottomrule
 \end{tabular}
-\caption{Operational summary of the PIMSM spectrum-to-dynamics mapping.}
-\label{alg:spectrum_to_delta}
-\end{table}
+\end{algorithm}
 
 \textbf{Acquisition-unit anchoring.} The SSM transition depends on the product of the discretization step and the continuous-time state matrix (e.g., $\exp(\Delta A)$), so $\Delta$ and $A$ can compensate for one another if both are left unconstrained. PIMSM separates these roles by expressing $\Delta$ in acquisition units while constraining the scale of $A$. First, the spectrum-to-delta map expresses each $\Delta_k$ in dataset-native acquisition units and applies a log-scale regularizer to discourage arbitrary rescaling. Second, the continuous-time decay is initialized as $A=-\exp(A_{\log})$ with $A\approx -1/\tau$ and $\tau$ sampled from a log-uniform acquisition-time range. During training, an $A$-scale penalty
 \[
@@ -321,7 +321,7 @@ The final hidden sequence is temporally pooled and passed to a task-specific pre
 
 \section{Results}\label{sec:results}
 
-We evaluate PIMSM across four deployment-motivated axes of structured distribution shift. Axes (i--ii) use HCP motor fMRI; axis (iii) uses HCP resting-state$\to$task fMRI; axis (iv) uses Weather-5K spatial OOD forecasting. All comparisons use parameter-matched baselines (Mamba2, Transformer, 1D-CNN), with $\approx$7.85M parameters for HCP experiments and $\approx$18M parameters for Weather-5K forecasting.
+Across all four deployment-motivated axes, comparisons use parameter-matched baselines (Mamba2, Transformer, 1D-CNN), with $\approx$7.85M parameters for HCP experiments and $\approx$18M parameters for Weather-5K forecasting.
 
 \subsection{Axis (i): Temporal-Context Shift --- HCP Motor Early-Window Truncation}
 \label{sec:results:hcp_tr_shift}
@@ -340,13 +340,12 @@ We evaluate PIMSM across four deployment-motivated axes of structured distributi
 
 We assess robustness to temporal-context shift by training and evaluating separate early-window models whose SSM backbone input is restricted to the first 3 or 2 TRs of each event-locked motor block, simulating severe early-window decoding while preserving task labels and subject identity.
 SpectralHyperNet receives the full 284-TR motor run for scale calibration, so the experiment isolates whether run-level spectral structure stabilizes representations when downstream task evidence is temporally shortened, rather than simulating a changed scanner TR.
-Figure~\ref{fig:tr_shift_stability} reports representation stability (CKA, distance correlation dCor between full-block and early-window model representations) alongside decoding accuracy.
 
 \paragraph{Full block $\rightarrow$ 2 TRs (severe truncation).}
 Table~\ref{tab:drift2tr} shows that PIMSM has the smallest full-block$\to$2TR accuracy gap while also achieving the highest representation similarity between full-block and early-window embeddings, measured by both CKA and dCor.
 This pattern is more informative than shifted accuracy alone: PIMSM preserves the latent geometry of the full-block solution when only the earliest time points are available.
 Replacing spectrum-derived $\Delta$ with learnable or random values increases the accuracy gap and lowers CKA/dCor, indicating that robustness is not explained by multi-scale capacity alone but by spectrum-aligned temporal anchoring.
-Representation stability clarifies this contribution: PIMSM~(learnable~$\Delta$) reaches a 2TR accuracy similar to Mamba2, yet its CKA is lower and less stable than full PIMSM, indicating that spectrum-derived initialization anchors geometry more consistently across runs.
+PIMSM~(learnable~$\Delta$) reaches a 2TR accuracy similar to Mamba2, yet its CKA is lower and less stable than full PIMSM, indicating that spectrum-derived initialization anchors geometry more consistently across runs.
 Across the three paired seeds, PIMSM improves over Mamba2 on all shifted 2TR metrics (accuracy, accuracy gap, CKA, and dCor).
 Given the small seed count, we treat paired tests as exploratory rather than definitive; the consistent direction of CKA and dCor improvements across all three seeds supports the robustness of the representation-stability effect.
 
@@ -368,7 +367,7 @@ PIMSM (random $\Delta$) & $0.983\pm0.004$ & $0.889\pm0.055$ & $0.737\pm0.105$ & 
 \end{tabular}
 \caption{
 \textbf{HCP motor decoding under severe temporal-context truncation (full block $\rightarrow$ 2 TRs).}
-Values are mean $\pm$ std over three seeds. PIMSM achieves the highest accuracy and representation stability; ablations show that spectrum-derived initialization, not multi-scale capacity alone, drives the geometry-preservation benefit.
+Values are mean $\pm$ std over three seeds. Ablations test whether spectrum-derived initialization, rather than multi-scale capacity alone, drives geometry preservation.
 }
 \label{tab:drift2tr}
 \end{table}
@@ -407,7 +406,6 @@ Transformer & $0.774\pm0.031$ & $\mathbf{0.948\pm0.017}$ & $\mathbf{0.967\pm0.00
 \caption{
 \textbf{Low-resource generalization on HCP motor decoding.}
 Values are mean $\pm$ std over three seeds. Models are pretrained on resting-state fMRI and finetuned with varying fractions of labeled data.
-PIMSM performs best in the extreme low-data regime (1\%).
 }
 \label{tab:data_scarce}
 \end{table}
@@ -438,7 +436,6 @@ Transformer & $0.554\pm0.063$ \\
 \caption{
 \textbf{Brain-state shift: resting-state training $\to$ motor-task test (Axis iii).}
 Values are mean $\pm$ std over three seeds. Models are trained for sex classification on HCP resting-state fMRI and evaluated on HCP motor-task fMRI without adaptation; the target is shared across scan conditions.
-PIMSM achieves the highest accuracy and the lowest cross-seed variance among the baselines in this setting, consistent with the hypothesis that physics-informed multi-scale kernels reduce sensitivity to resting$\to$task acquisition-state shift.
 }
 \label{tab:brainstateshift}
 \end{table}
