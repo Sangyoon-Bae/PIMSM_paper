@@ -309,19 +309,15 @@ keeps the average decay scale near its initialization $a_0$. This prevents $A$ f
 
 Each PIMSM block extends the Mamba-2 SSD kernel to a multi-scale setting because its multi-head SSM structure provides a natural unit for assigning different discretization parameters to different head groups. This makes Mamba-2 a convenient backbone for multi-scale temporal parameterization: PIMSM can introduce fast-to-slow temporal kernels by sharing $\Delta_k$ within each scale group, without substantially increasing the parameter count relative to a single-scale Mamba2 baseline. Heads within the same scale share $\Delta_k$ but maintain independent state transitions; using multiple heads per scale increases within-scale representational capacity while preserving the intended temporal hierarchy. The resulting scale-specific states are fused through lightweight cross-scale attention to model interactions among temporal scales. Full architectural equations and head counts are given in Appendix~\ref{sec:appx:arch_details}.
 
-\subsection{Backbone and Prediction Head}
-
-The final hidden sequence is temporally pooled and passed to a task-specific prediction head for classification or forecasting. Architectural dimensions and parameter-matching details are provided in Appendix~\ref{sec:appx:arch_details}.
-
-\subsection{Training Details}
+\subsection{Backbone, Prediction Head, and Training}
 \label{sec:methods:training}
 
-All models are trained under a shared protocol with matched parameter budgets across baselines. Full optimization settings, Weather-5K preprocessing, RevIN normalization~\citep{kim2021reversible}, and OOD split construction are reported in Appendix~\ref{sec:appx:training_details} and Appendix~\ref{sec:appx:data}; architecture dimensions are reported in Appendix~\ref{sec:appx:arch_details}.
+The final hidden sequence is temporally pooled and passed to a task-specific prediction head for classification or forecasting. All models are trained under a shared protocol with matched parameter budgets across baselines. Architecture dimensions and parameter-matching details are provided in Appendix~\ref{sec:appx:arch_details}; optimization settings, Weather-5K preprocessing, RevIN normalization~\citep{kim2021reversible}, and OOD split construction are reported in Appendix~\ref{sec:appx:training_details} and Appendix~\ref{sec:appx:data}.
 
 
 \section{Results}\label{sec:results}
 
-We evaluate PIMSM across four deployment-motivated axes of structured distribution shift. Axes (i--ii) use HCP motor fMRI; axis (iii) uses HCP resting-state$\to$task fMRI; axis (iv) uses Weather-5K spatial OOD forecasting. All comparisons use parameter-matched baselines (Mamba2, Transformer, 1D-CNN; $\approx$7.85M parameters each).
+We evaluate PIMSM across four deployment-motivated axes of structured distribution shift. Axes (i--ii) use HCP motor fMRI; axis (iii) uses HCP resting-state$\to$task fMRI; axis (iv) uses Weather-5K spatial OOD forecasting. All comparisons use parameter-matched baselines (Mamba2, Transformer, 1D-CNN), with $\approx$7.85M parameters for HCP experiments and $\approx$18M parameters for Weather-5K forecasting.
 
 \subsection{Axis (i): Temporal-Context Shift --- HCP Motor Early-Window Truncation}
 \label{sec:results:hcp_tr_shift}
