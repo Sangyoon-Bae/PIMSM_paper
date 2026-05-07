@@ -506,7 +506,7 @@ Because several concurrent multi-scale SSM/Mamba variants either lack mature pub
 \section{Discussion}
 \label{sec:discussion}
 
-PIMSM supports temporal-scale alignment as a practical inductive bias for scientific sequence models. By coupling spectrum-derived knees to scale-specific $\Delta$ values and regularizing $A$ to prevent compensatory rescaling, the backbone learns a memory policy tied to the signal's physical organization rather than to a split-specific hyperparameter setting.
+PIMSM explicitly injects multi-scale timesteps into SSM-based time-series modeling. By coupling spectrum-derived knees to scale-specific $\Delta$ values and regularizing $A$ to prevent compensatory rescaling, the backbone learns a memory policy tied to the signal's physical organization rather than to a split-specific hyperparameter setting.
 
 This matters when supervision is weak, observation is short, or deployment state changes. The HCP experiments cover early-window decoding, scarce labels, and resting-state$\rightarrow$task transfer; Weather-5K shows that the same spectrum-to-memory mechanism applies outside neuroimaging. The stronger gains at longer weather horizons are consistent with spectrum-derived scale assignment allocating memory across empirical slow and fast regimes, beyond simply using a long-memory Mamba backbone.
 
