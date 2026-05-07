@@ -160,18 +160,18 @@ Let $e \in \mathcal{E}$ index an acquisition or domain condition (fMRI TR, brain
 A structured shift $e \to e'$ alters the temporal statistics of $x_{1:T} \in \mathbb{R}^d$ while preserving the downstream task definition.
 Thus the labels or forecasting targets are fixed, but the temporal evidence, supervision budget, state, or station domain available at deployment changes.
 We evaluate four axes: \textbf{Axis (i)} temporal-context truncation of task trials with full-sequence spectral calibration; \textbf{Axis (ii)} low-resource transfer; \textbf{Axis (iii)} brain-state shift (resting $\leftrightarrow$ task); and \textbf{Axis (iv)} Weather-5K spatial out-of-distribution (OOD) forecasting on held-out stations.
-Given a multivariate time series $x_{1:T}$, a temporal encoder $\Phi_{\theta}$ produces latent states $h_{1:T}=\Phi_{\theta}(x_{1:T})$.
-An aggregation map $\rho$ produces a representation $z=\rho(h_{1:T})$, and a task head $g_{\psi}$ predicts $\hat y=g_{\psi}(z)$.
-Training on source condition $e$ minimizes empirical risk,
+
+The central object in this setting is the temporal weighting profile induced by the encoder, not a modified loss function.
+Given a multivariate time series $x_{1:T}$, a temporal encoder $\Phi_{\theta}$ induces condition-dependent latent states
 \begin{equation}
-\min_{\theta,\psi}\;
-\mathbb{E}_{(x,y)\sim \mathcal{D}_{e}}
-\left[
-\ell\!\left(g_{\psi}(\rho(\Phi_{\theta}(x))),y\right)
-\right].
-\label{eq:erm_main}
+h_{1:T}^{(e)}=\Phi_{\theta}^{\tilde g_e}(x_{1:T}),
+\qquad
+z_e(x)=\rho(h_{1:T}^{(e)}),
+\label{eq:encoder_kernel_setup}
 \end{equation}
-The central question is whether the learned encoder remains useful under $e'$ without shift-specific retraining or adaptation.
+where $\tilde g_e$ denotes the model-induced temporal weighting profile under condition $e$, and $\rho$ aggregates latent states into a representation.
+A task head $g_{\psi}$ predicts $\hat y=g_{\psi}(z_e(x))$.
+Under shift, the question is whether the architecture preserves a useful temporal weighting profile and representation geometry when the condition changes to $e'$, without shift-specific retraining or adaptation.
 We quantify representation drift between conditions via a geometry-aware discrepancy $\mathcal{D}$, instantiated with CKA~\citep{kornblith2019similarity} or distance correlation dCor~\citep{szekely2007measuring}:
 \begin{equation}
 \mathrm{Drift}(e,e') := \mathbb{E}_{x}\!\left[\mathcal{D}\!\left(z_e(x),\, z_{e'}(x)\right)\right],
