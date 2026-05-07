@@ -64,11 +64,11 @@
 \usepackage{amssymb}
 \usepackage{amsmath}
 \usepackage{amsthm}
-\setlength{\abovecaptionskip}{9pt}
+\setlength{\abovecaptionskip}{11pt}
 \setlength{\belowcaptionskip}{0pt}
-\setlength{\textfloatsep}{8pt plus 1pt minus 2pt}
+\setlength{\textfloatsep}{6pt plus 1pt minus 2pt}
 \setlength{\floatsep}{6pt plus 1pt minus 1pt}
-\setlength{\intextsep}{8pt plus 1pt minus 2pt}
+\setlength{\intextsep}{6pt plus 1pt minus 2pt}
 % hyperref must load after natbib (natbib is loaded by neurips_2025)
 \newtheorem{lemma}{Lemma}
 \newtheorem{proposition}{Proposition}
@@ -382,7 +382,9 @@ Explicit drift regularization on Mamba2 improves stability without degrading ID 
 \label{sec:results:data_scarce}
 
 Table~\ref{tab:data_scarce} reports motor decoding accuracy as labeled training data varies from 1\% to 100\%.
-The key regime is the most data-scarce setting: at 1\% labels, PIMSM is the strongest model, indicating that spectrum-aligned temporal kernels are most useful when the supervised signal is extremely limited.
+The data-scarce split is implemented by first constructing the standard subject-level train/validation/test split and then randomly subsampling only the training set according to the specified data ratio; validation and test subjects are kept fixed.
+Thus, the 1\% condition evaluates whether a model trained from an extremely small labeled training subset still generalizes to the same held-out motor-task test distribution, rather than making the test set smaller or easier.
+In this most data-scarce setting, PIMSM is the strongest model, indicating that spectrum-aligned temporal kernels are most useful when the supervised signal is extremely limited.
 As the label budget increases, differences among architectures narrow and the advantage is no longer uniform, suggesting that the main benefit is improved sample efficiency under extreme supervision scarcity rather than blanket dominance across all data regimes.
 Pretraining on resting-state fMRI further improves robustness; linear probing results are reported in Appendix~\ref{sec:appx:pretrain}.
 
