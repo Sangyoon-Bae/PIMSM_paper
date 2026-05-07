@@ -64,6 +64,8 @@
 \usepackage{amssymb}
 \usepackage{amsmath}
 \usepackage{amsthm}
+\setlength{\abovecaptionskip}{7pt}
+\setlength{\belowcaptionskip}{1pt}
 % hyperref must load after natbib (natbib is loaded by neurips_2025)
 \newtheorem{lemma}{Lemma}
 \newtheorem{proposition}{Proposition}
@@ -264,7 +266,11 @@ We empirically verify this piecewise structure across datasets and domains in Ap
 
 \textbf{Knee estimation.} SpectralHyperNet predicts the $K-1$ knee frequencies and $K$ scaling exponents from the spectrum, initialized from a data-driven scipy fit on the first training batch. A multi-resolution MAE spectral fit loss drives knee placement and a seam loss encourages piecewise continuity; hyperparameters are in Appendix~\ref{sec:appx:training_details}.
 
-\textbf{Energy-weighted center frequency and discretization mapping.} For each band $k$, we compute an energy-weighted center frequency $f_{c,k}$ under $P(f) \propto f^{-\beta}$, giving a representative frequency that reflects spectral mass rather than a simple geometric mean.
+\textbf{Energy-weighted center frequency and discretization mapping.} The knees define frequency bands, but PIMSM does not use the geometric midpoint of each band as its scale. Instead, for a band $[f_a,f_b]$ with fitted slope $P_k(f)\propto f^{-\beta_k}$, we compute the energy centroid
+\[
+f_{c,k}=\frac{\int_{f_a}^{f_b} f\,P_k(f)\,df}{\int_{f_a}^{f_b} P_k(f)\,df}.
+\]
+The implementation evaluates this centroid in closed form, with stable special cases for $\beta_k\approx 1$ and $\beta_k\approx 2$. Thus, a band whose spectral mass is concentrated near its lower boundary yields a lower representative frequency than a midpoint rule would, while flatter bands place the representative frequency closer to the center of the interval.
 
 \paragraph{Frequency-to-delta mapping.}
 The core principle is $\Delta_k \propto f_{c,k}$: higher-frequency bands receive larger $\Delta$ (faster updates); lower-frequency bands receive smaller $\Delta$ (longer memory).
